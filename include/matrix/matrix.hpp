@@ -1,6 +1,5 @@
 //created by : A.N. Prosper
-//date : December 18
-// th 2025
+//date : December 18th 2025
 //time : 20:20
 
 #ifndef MATRIX_H
@@ -16,7 +15,12 @@
 #include <vector>
 
 
-
+template<typename M>
+struct LUResult {
+    std::vector<std::size_t> piv;
+    std::size_t rank;
+    std::size_t swap_count;
+};
 
 
 template<typename M>
@@ -375,10 +379,65 @@ class Matrix{
 
     }
 
-    //LU DEcomposition with partial pivoting
-    void LU_decompositon(){
+    // LU Decomposition with partial pivoting (in-place, rectangular-safe)
+    LUResult<M> LU_decompositon(M epsilon = static_cast<M>(1e-12)) {
 
+        LUResult<M> result{};
+        const std::size_t m = row;
+        const std::size_t n = column;
+        const std::size_t k_max = std::min(m, n);
+
+        // initialize permutation vector
+        result.piv.resize(m);
+        for (std::size_t i = 0; i < m; ++i)
+            result.piv[i] = i;
+
+        result.rank = 0;
+        result.swap_count = 0;
+
+        //main elimination loop
+        for (std::size_t k = 0; k < k_max; ++k) {
+
+            //pivot selection
+            std::size_t pivot_row = k;
+            M max_value = std::abs((*this)(k, k));
+
+            for (std::size_t i = k + 1; i < m; ++i) {
+                M val = std::abs((*this)(i, k));
+                if (val > max_value) {
+                    max_value = val;
+                    pivot_row = i;
+                }
+            }
+
+            // rank deficiency check
+            if (max_value < epsilon)
+                break;
+
+            //row swap
+            if (pivot_row != k) {
+                for (std::size_t j = 0; j < n; ++j)
+                    std::swap((*this)(k, j), (*this)(pivot_row, j));
+
+                std::swap(result.piv[k], result.piv[pivot_row]);
+                ++result.swap_count;
+            }
+
+            //elimination
+            for (std::size_t i = k + 1; i < m; ++i) {
+                (*this)(i, k) /= (*this)(k, k);
+
+                for (std::size_t j = k + 1; j < n; ++j) {
+                    (*this)(i, j) -= (*this)(i, k) * (*this)(k, j);
+                }
+            }
+
+            ++result.rank;
+        }
+
+        return result;
     }
+
 
 
 
