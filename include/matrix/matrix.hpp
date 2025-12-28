@@ -23,6 +23,17 @@ struct LUResult {
 };
 
 
+
+enum class NormType{
+    Frobenius,
+    One,
+    Infinity,
+    Spectral
+};
+
+
+
+
 template<typename M>
 //requires std::is_integral_v<M> || std::is_floating_point_v<M>
 class Matrix{
@@ -348,7 +359,7 @@ class Matrix{
 
     //Rank
     std::size_t Rank() {
-        return this->LU_decompositon().rank;
+        return this->LU_decomposition().rank;
     }
 
     //cofactor
@@ -393,7 +404,7 @@ class Matrix{
         }
 
         Matrix<M> result = (*this);    
-        auto result_lu = result.LU_decompositon();
+        auto result_lu = result.LU_decomposition();
 
         if (result_lu.rank < result.row) {
             return M{0};
@@ -474,6 +485,70 @@ class Matrix{
         return result;
     }
 
+
+    //Norms
+
+    double norm() {
+        double sum = 0;
+
+        for (std::size_t i {}; i < this->row * this->column; i++) {
+            sum += this->data[i] * this->data[i];
+        }
+        return std::sqrt(sum);
+    }
+
+    double norm(NormType type) {
+        switch(type) {
+            case NormType::Frobenius:
+                return norm();
+            case NormType::One:
+                return norm_1();
+            case NormType::Infinity:
+                return norm_infinity();
+            case NormType::Spectral:
+                return norm_spectral();
+            default:
+                return norm();
+        }
+    }
+
+    private:
+    //Norm implementation
+
+    double norm_1() {
+        double max_sum = 0;
+        for (std::size_t j {}; j < this->column; j++) {
+            double sum = 0;
+            for (std::size_t i {}; i < this->row; i++) {
+                sum += std::abs((*this)(i, j));
+            }
+            if (sum > max_sum) {
+                max_sum = sum;
+            }
+        }
+
+        return max_sum;
+    };
+    double norm_infinity() {
+        double max_sum = 0;
+
+        for (std::size_t i {}; i < this->row; i++) {
+            double sum = 0;
+            for (std::size_t j {}; j < this->column; j++) {
+                sum += std::abs((*this)(i, j));
+            }
+            if (sum > max_sum) {
+                max_sum = sum;
+            }
+        }
+
+        return max_sum;
+    };
+    double norm_spectral() {
+        // Spectral norm is the largest singular value
+        // For now, i will not compute it
+        return 0;
+    };
  
 
 };
