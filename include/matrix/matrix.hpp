@@ -347,40 +347,76 @@ class Matrix{
     }
 
     //Rank
-    void Rank(){
-
+    std::size_t Rank() {
+        return this->LU_decompositon().rank;
     }
 
     //cofactor
-    M cofactor(std::size_t i, std::size_t j){
-        //((-1)^(i+j))*det(M(i,j))
-        Matrix<M> minor(i, j);
-        return std::pow(-1, (i+j)) * minor.determinant();
+    M cofactor(std::size_t row_index, std::size_t column_index) {
+        if (row != column) {
+            throw std::invalid_argument("Cofactor requires a square matrix.");
+        }
+
+        if (row_index >= row || column_index >= column) {
+            throw std::out_of_range("Matrix index is out of range.");
+        }
+
+        Matrix<M> minor(row - 1, column - 1);
+        std::size_t k = 0;
+
+        for (std::size_t i = 0; i < row; ++i) {
+            for (std::size_t j = 0; j < column; ++j) {
+                if (i != row_index && j != column_index) {
+                    minor.data[k++] = (*this)(i, j);
+                }
+            }
+        }
+
+        M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
+        return sign * minor.determinant();
+    }
+
+    //cofactor matrix
+    Matrix<M> cofactor_matrix(){
 
     }
     
     //adjoint
     Matrix<M> adjoint(){
-        Matrix<M> result(this->row, this->column);
 
-        for (std::size_t i {}; i < this->row; i++) {
-            for (std::size_t j {}; j < this->column; j++) {
-                result.data[i * this->row + j] = this->cofactor(i, j);
-            }
-        }
-        return result.Transpose();
     }
     
     //determinant 
-    void determinant(){
+    M determinant(){
+        if(row != column){
+            throw std::invalid_argument("Matrix determinant requires row == column.");
+        }
 
+        Matrix<M> result = (*this);    
+        auto result_lu = result.LU_decompositon();
+
+        if (result_lu.rank < result.row) {
+            return M{0};
+        }
+
+        M major_diagonal = M{1};
+        for (std::size_t i {}; i < result.row; i++) { 
+            for (std::size_t j {}; j < result.column; j++) {
+                if (i == j) {
+                    major_diagonal *= result(i, i);
+                }
+            }
+        }
+        return (result_lu.swap_count % 2 ? -major_diagonal : major_diagonal);
     }
-    void Inverse(){
+
+    //inverse
+    Matrix<M> Inverse(){
 
     }
 
     // LU Decomposition with partial pivoting (in-place, rectangular-safe)
-    LUResult<M> LU_decompositon(M epsilon = static_cast<M>(1e-12)) {
+    LUResult<M> LU_decomposition(M epsilon = static_cast<M>(1e-12)) {
 
         LUResult<M> result{};
         const std::size_t m = row;
@@ -438,12 +474,7 @@ class Matrix{
         return result;
     }
 
-
-
-
-
-
-    
+ 
 
 };
 
