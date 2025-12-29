@@ -200,20 +200,24 @@ class Matrix{
     }
 
     //matrix multiplication
-    Matrix<M> operator*(const Matrix<M>& other) const{
-        
+    Matrix<M> operator*(const Matrix<M>& other) {
         if (this->column != other.row) {
-            throw std::invalid_argument("Matrix multiplication requires A.column() == B.row()");
+            throw std::invalid_argument("A.column must equal B.row");
         }
+
         Matrix<M> result(this->row, other.column);
-        for (std::size_t i {}; i < this->row; i++) {
-            for (std::size_t j {}; j < other.column; j++) {
-                for (std::size_t k {}; k < other.row; k++) {
-                    result.data[i * this->row + j] =
-                    this->data[i * this->row + k] * other.data[j * this->row + k];
+
+        for (std::size_t i = 0; i < this->row; ++i) {
+            for (std::size_t j = 0; j < other.column; ++j) {
+                M sum{};
+                for (std::size_t k = 0; k < this->column; ++k) {
+                    sum += this->data[i * this->column + k]
+                        * other.data[k * other.column + j];
                 }
+                result.data[i * result.column + j] = sum;
             }
         }
+
         return result;
     }
 
