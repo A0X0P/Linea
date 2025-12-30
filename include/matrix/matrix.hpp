@@ -339,11 +339,7 @@ class Matrix{
             throw std::invalid_argument("Matrix diagonal requires row == column.");
         }
         for (std::size_t i {}; i < this->row; i++) { 
-            for (std::size_t j {}; j < this->column; j++) {
-                if (i == j) {
-                    major_diagonal *= this->data[i * this->row + j];
-                }
-            }
+            major_diagonal *= (*this)(i, i);
         } 
         return major_diagonal;
 
