@@ -16,12 +16,14 @@
 
 
 template<typename M>
-struct LUResult {
-    std::vector<std::size_t> piv;
+struct LUResult{
+    std::vector<M> permutation_vector;
     std::size_t rank;
     std::size_t swap_count;
 };
 
+template<typename M>
+class LUFactor;
 
 
 enum class NormType{
@@ -430,63 +432,81 @@ class Matrix{
 
     }
 
-    // LU Decomposition with partial pivoting (in-place, rectangular-safe)
-    LUResult<M> LU_decomposition(M epsilon = static_cast<M>(1e-12)) {
+    // LU Decomposition with partial pivoting.
+    LUFactor<M> lu_decompose(M epsilon = M(0)) {
 
-        LUResult<M> result{};
-        const std::size_t m = row;
-        const std::size_t n = column;
+        const std::size_t m = row; 
+        const std::size_t n = column; 
         const std::size_t k_max = std::min(m, n);
 
-        // initialize permutation vector
-        result.piv.resize(m);
-        for (std::size_t i = 0; i < m; ++i)
-            result.piv[i] = i;
+        Matrix<M> LU = (*this);
 
-        result.rank = 0;
-        result.swap_count = 0;
+        LUResult<M> result;
+        result.permutation_vector.resize(m);
+        for (std::size_t i {}; i < m; ++i) {
+            result.permutation_vector[i] = i;
+        }
+        std::vector<M> row_index = result.permutation_vector;
 
-        //main elimination loop
-        for (std::size_t k = 0; k < k_max; ++k) {
+        // Compute adaptive epsilon if not provided by the user
+        M effective_epsilon = epsilon;
+        if (effective_epsilon == M(0)) {
+            M max_elem = M(0);
+            for (std::size_t i = 0; i < m; ++i) {
+                for (std::size_t j = 0; j < n; ++j) {
+                    max_elem = std::max(max_elem, std::abs((*this)(i, j)));
+                }
+            }
+            effective_epsilon = std::numeric_limits<M>::epsilon() * max_elem * std::max(m, n);
+        }
 
-            //pivot selection
-            std::size_t pivot_row = k;
-            M max_value = std::abs((*this)(k, k));
+        for (std::size_t k {}; k < k_max; ++k) {
+            // Pivot selection
+            std::size_t pivot = k;
+            M max_value = std::abs(LU(row_index[k], k));
 
             for (std::size_t i = k + 1; i < m; ++i) {
-                M val = std::abs((*this)(i, k));
+                M val = std::abs(LU(row_index[i], k));
                 if (val > max_value) {
                     max_value = val;
-                    pivot_row = i;
+                    pivot = i;
                 }
             }
 
-            // rank deficiency check
-            if (max_value < epsilon)
-                break;
+            if (max_value < effective_epsilon) {
+                continue;
+            }
 
-            //row swap
-            if (pivot_row != k) {
-                for (std::size_t j = 0; j < n; ++j)
-                    std::swap((*this)(k, j), (*this)(pivot_row, j));
-
-                std::swap(result.piv[k], result.piv[pivot_row]);
+            if (pivot != k) {
+                std::swap(row_index[k], row_index[pivot]);
+                std::swap(result.permutation_vector[k], result.permutation_vector[pivot]);
                 ++result.swap_count;
             }
 
-            //elimination
+            const std::size_t physical_pivot_row = row_index[k];
+
+            // Elimination
             for (std::size_t i = k + 1; i < m; ++i) {
-                (*this)(i, k) /= (*this)(k, k);
+                const std::size_t physical_row = row_index[i];
+                LU(physical_row, k) /= LU(physical_pivot_row, k);
 
                 for (std::size_t j = k + 1; j < n; ++j) {
-                    (*this)(i, j) -= (*this)(i, k) * (*this)(k, j);
+                    LU(physical_row, j) -= LU(physical_row, k) * LU(physical_pivot_row, j);
                 }
             }
 
             ++result.rank;
         }
 
-        return result;
+        // Physically permute LU to match permutation
+        Matrix<M> LU_perm(m, n);
+        for (std::size_t i {}; i < m; ++i) {
+            for (std::size_t j {}; j < n; ++j) {
+                LU_perm(i, j) = LU(row_index[i], j);
+            }
+        }
+
+        return LUFactor<M>(std::move(LU_perm), std::move(result));
     }
 
 
@@ -573,6 +593,86 @@ Matrix<Tp> operator*(T scalar, Matrix<Tp>& matrix){
         return result;
 }
 
+//LUFactor 
+template<typename M>
+class LUFactor{
+
+    private:
+    // --- attributes ---
+
+    Matrix<M> LU; 
+    LUResult<M> info;
+
+    public:
+    // ---- methods ----
+
+    //constructor
+    LUFactor(Matrix<M> lu, LUResult<M> result)
+        : LU(std::move(lu)), info(std::move(result)) {}
+
+
+    
+    //getter
+    LUResult<M> get_Info() {
+        return info;
+    }
+
+    // Extract L as m × min(m,n) lower triangular matrix with unit diagonal from the LU matrix
+    Matrix<M> extract_L() const {
+
+        const std::size_t m = LU.getRow();
+        const std::size_t n = LU.getColumn();
+        const std::size_t k_max = std::min(m, n);
+
+        Matrix<M> L (m, k_max, M{});
+
+        for (std::size_t i {}; i < m; i++) {
+
+            //unit diagonal
+            if (i < k_max) {  
+                L(i, i) = M{1};
+            }
+
+            //subdiagonal entries
+            for (std::size_t j {}; j < std::min(i, k_max); j++) {
+                L(i, j) = LU(i, j);
+            }
+        }
+        return L;
+    }
+
+    // Extract U as min(m,n) × n upper triangular matrix from LU matrix
+    Matrix<M> extract_U() const{
+    
+        const std::size_t m = LU.getRow();
+        const std::size_t n = LU.getColumn();
+        const std::size_t k_max = std::min(m, n);
+
+        Matrix<M> U (k_max, n, M{});
+
+        for (std::size_t i {}; i < k_max; i++) {
+            for (std::size_t j = i; j < n; j++) {
+                U(i, j) = LU(i, j);
+            }
+        }
+        return U;
+    }
+    
+    // Extract permutation matrix P (m × m) such that P*A = L*U
+    Matrix<M> extract_P() const {
+
+        const std::size_t m = LU.getRow();
+        Matrix<M > P (m, m, M{});
+
+        for (std::size_t i {}; i < m; i++) {
+            P(i, info.permutation_vector[i]) = M{1};
+        }
+        return P;
+    }
+
+
+
+};
 
 
 #endif
