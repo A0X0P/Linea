@@ -365,7 +365,7 @@ class Matrix{
 
     //Rank
     std::size_t Rank() {
-        return this->LU_decomposition().rank;
+        return lu_decompose().get_rank();
     }
 
     //cofactor
