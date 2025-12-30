@@ -409,22 +409,21 @@ class Matrix{
             throw std::invalid_argument("Matrix determinant requires row == column.");
         }
 
-        Matrix<M> result = (*this);    
-        auto result_lu = result.LU_decomposition();
 
-        if (result_lu.rank < result.row) {
+        LUFactor<M> result = lu_decompose();
+        Matrix<M> U_matrix = result.extract_U();
+        
+
+        if (result.get_rank() < U_matrix.getRow()) {
             return M{0};
         }
 
         M major_diagonal = M{1};
-        for (std::size_t i {}; i < result.row; i++) { 
-            for (std::size_t j {}; j < result.column; j++) {
-                if (i == j) {
-                    major_diagonal *= result(i, i);
-                }
-            }
+        for (std::size_t i {}; i < U_matrix.getRow(); i++) { 
+            major_diagonal *= U_matrix(i, i);
         }
-        return (result_lu.swap_count % 2 ? -major_diagonal : major_diagonal);
+        bool even_swaps = (result.get_swap_count() % 2 == 0);
+        return even_swaps ? major_diagonal : -major_diagonal;
     }
 
     //inverse
@@ -613,6 +612,19 @@ class LUFactor{
 
     
     //getter
+
+    std::size_t get_rank() {
+        return info.rank;
+    }
+
+    std::size_t get_swap_count() {
+        return info.swap_count;
+    }
+
+    std::vector<M> get_permutation_vector() {
+        return info.permutation_vector;
+    }
+
     LUResult<M> get_Info() {
         return info;
     }
