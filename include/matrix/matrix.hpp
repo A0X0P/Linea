@@ -529,35 +529,34 @@ private:
 
   // forward and backward substitution utilities for triangular matrices
 
-  std::vector<M> forward_substitution(const Matrix<M> &L,
-                                      const std::vector<M> &b) {
-    std::size_t n = static_cast<std::size_t>(L.size());
-    std::vector<M> y;
-    y.resize(n);
+  std::vector<M> forward_substitution(Matrix<M> L, std::vector<M> b,
+                                      std::vector<M> piv) {
+    std::size_t n = L.row;
+    std::vector<M> y(n);
 
-    for (std::size_t i = 0; i < n; i++) {
+    for (std::size_t i = 0; i < n; ++i) {
       M sum{};
 
-      for (std::size_t j = 0; j < i; j++) {
+      for (std::size_t j = 0; j < i; ++j) {
         sum += L(i, j) * y[j];
       }
-      y[i] = (b[i] - sum) / L(i, i);
+
+      y[i] = (b[piv[i]] - sum) / L(i, i);
     }
     return y;
   }
 
-  std::vector<M> backward_substitution(const Matrix<M> &U,
-                                       const std::vector<M> &y) {
-    std::size_t n = static_cast<std::size_t>(U.size());
-    std::vector<M> x;
-    x.resize(n);
+  std::vector<M> backward_substitution(Matrix<M> U, std::vector<M> y) {
+    std::size_t n = U.row;
+    std::vector<M> x(n);
 
     for (std::size_t i = n; i-- > 0;) {
       M sum{};
 
-      for (std::size_t j = i + 1; j < n; j++) {
+      for (std::size_t j = i + 1; j < n; ++j) {
         sum += U(i, j) * x[j];
       }
+
       x[i] = (y[i] - sum) / U(i, i);
     }
     return x;
