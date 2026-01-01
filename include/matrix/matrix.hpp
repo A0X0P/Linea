@@ -381,7 +381,31 @@ public:
   }
 
   // inverse
-  Matrix<M> Inverse() {}
+  Matrix<M> Inverse() {
+
+    LUFactor<M> lu_result = lu_decompose();
+    Matrix<M> L = lu_result.extract_L();
+    Matrix<M> U = lu_result.extract_U();
+    std::vector<M> piv = lu_result.get_permutation_vector();
+    std::size_t n = this->row;
+
+    Matrix<M> inverse_matrix(n, n);
+
+    for (std::size_t i = 0; i < n; i++) {
+
+      std::vector<M> e_i(n, M{});
+      e_i[i] = M{1};
+
+      std::vector<M> y = forward_substitution(L, e_i, piv);
+
+      std::vector<M> x = backward_substitution(U, y);
+
+      for (std::size_t j = 0; j < n; j++) {
+        inverse_matrix(j, i) = x[j];
+      }
+    }
+    return inverse_matrix;
+  }
 
   // LU Decomposition with partial pivoting.
   LUFactor<M> lu_decompose(M epsilon = M(0)) {
