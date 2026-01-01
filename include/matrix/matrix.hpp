@@ -104,6 +104,9 @@ public:
     return true;
   };
 
+  // inequality
+  bool operator!=(Matrix<M> other) noexcept { return !(*this == other); }
+
   // addition
   Matrix<M> operator+(Matrix<M> other) {
 
