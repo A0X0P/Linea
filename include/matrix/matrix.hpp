@@ -271,6 +271,9 @@ public:
   // size
   int size() { return static_cast<int>(this->row * this->column); }
 
+  // empty
+  bool empty() noexcept { return this->data.empty(); }
+
   // symmetric
   bool symmetric() const noexcept {
     if ((this->row != this->Transpose().row) ||
