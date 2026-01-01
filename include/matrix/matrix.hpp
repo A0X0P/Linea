@@ -289,6 +289,9 @@ public:
   // square
   bool square() noexcept { return this->row == this->column; }
 
+  // singular
+  bool singular() noexcept { return Rank() < row; }
+
   // diagonal
   M diagonal() {
 
