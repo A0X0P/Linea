@@ -286,6 +286,9 @@ public:
     return true;
   }
 
+  // square
+  bool square() noexcept { return this->row == this->column; }
+
   // diagonal
   M diagonal() {
 
