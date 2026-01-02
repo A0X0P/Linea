@@ -24,6 +24,8 @@ template <typename M> class LUFactor;
 
 enum class NormType { Frobenius, One, Infinity, Spectral };
 
+enum class Diagonal { Major, Minor };
+
 template <typename M>
 // requires std::is_integral_v<M> || std::is_floating_point_v<M>
 class Matrix {
@@ -337,17 +339,27 @@ public:
   bool singular() noexcept { return Rank() < row; }
 
   // diagonal
-  M diagonal() {
-
-    M major_diagonal = M{1};
+  std::vector<M> diagonal(Diagonal type = Diagonal::Major) {
 
     if (row != column) {
       throw std::invalid_argument("Matrix diagonal requires row == column.");
     }
-    for (std::size_t i{}; i < this->row; i++) {
-      major_diagonal *= (*this)(i, i);
+
+    std::vector<M> _diagonal(row);
+
+    switch (type) {
+    case Diagonal::Major:
+      for (std::size_t i{}; i < this->row; i++) {
+        _diagonal[i] = (*this)(i, i);
+      }
+      break;
+    case Diagonal::Minor:
+      for (std::size_t i{}; i < this->row; i++) {
+        _diagonal[i] = (*this)(i, (row - 1) - i);
+      }
+      break;
     }
-    return major_diagonal;
+    return _diagonal;
   }
 
   // transpose
