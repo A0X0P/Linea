@@ -323,7 +323,7 @@ public:
   }
 
   // size
-  int size() { return static_cast<int>(this->row * this->column); }
+  std::size_t size() { return row * column; }
 
   // empty
   bool empty() noexcept { return this->data.empty(); }
