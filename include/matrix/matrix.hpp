@@ -209,24 +209,21 @@ public:
   }
 
   // matrix multiplication
-  Matrix<M> operator*(const Matrix<M> &other) {
+  Matrix<M> operator*(Matrix<M> &other) {
     if (this->column != other.row) {
       throw std::invalid_argument("A.column must equal B.row");
     }
 
-    Matrix<M> result(this->row, other.column);
-
-    for (std::size_t i = 0; i < this->row; ++i) {
-      for (std::size_t j = 0; j < other.column; ++j) {
-        M sum{};
-        for (std::size_t k = 0; k < this->column; ++k) {
-          sum += this->data[i * this->column + k] *
-                 other.data[k * other.column + j];
+    Matrix<M> result(row, other.column);
+    M sum{};
+    for (std::size_t i = 0; i < row; ++i) {
+      for (std::size_t k = 0; k < other.row; ++k) {
+        sum = (*this)(i, k);
+        for (std::size_t j = 0; j < other.column; ++j) {
+          result(i, j) += sum * other(k, j);
         }
-        result.data[i * result.column + j] = sum;
       }
     }
-
     return result;
   }
 
