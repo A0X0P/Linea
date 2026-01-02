@@ -85,6 +85,16 @@ public:
     return I;
   }
 
+  // zeros
+  static Matrix<M> Zeros(std::size_t row, std::size_t column) {
+    return Matrix<M>(row, column, M{0});
+  }
+
+  // ones
+  static Matrix<M> Ones(std::size_t row, std::size_t column) {
+    return Matrix<M>(row, column, M{1});
+  }
+
   // random matrix initialization
   static Matrix<M> rand_fill(std::size_t row, std::size_t column, M min_range,
                              M max_range) {
