@@ -448,6 +448,51 @@ public:
     return inverse_matrix;
   }
 
+  // linear system solver
+  std::vector<M> solve(std::vector<M> b) {
+
+    LUFactor<M> lu_result = lu_decompose();
+    Matrix<M> L = lu_result.extract_L();
+    Matrix<M> U = lu_result.extract_U();
+    std::vector<M> piv = lu_result.get_permutation_vector();
+
+    std::vector<M> y = forward_substitution(L, b, piv);
+
+    std::vector<M> x = backward_substitution(U, y);
+
+    return x;
+  }
+
+  Matrix<M> solve(Matrix<M> B) {
+
+    LUFactor<M> lu_result = lu_decompose();
+    Matrix<M> L = lu_result.extract_L();
+    Matrix<M> U = lu_result.extract_U();
+    std::vector<M> piv = lu_result.get_permutation_vector();
+
+    std::size_t n = this->row;
+    std::size_t m = B.column;
+
+    Matrix<M> X(n, m);
+
+    for (std::size_t i = 0; i < m; i++) {
+
+      std::vector<M> b_i(n);
+      for (std::size_t j = 0; j < n; j++) {
+        b_i[j] = B(j, i);
+      }
+
+      std::vector<M> y = forward_substitution(L, b_i, piv);
+      std::vector<M> x = backward_substitution(U, y);
+
+      for (std::size_t j = 0; j < n; j++) {
+        X(j, i) = x[j];
+      }
+    }
+
+    return X;
+  }
+
   // LU Decomposition with partial pivoting.
   LUFactor<M> lu_decompose(M epsilon = M(0)) {
 
