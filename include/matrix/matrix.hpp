@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
+#include <random>
 #include <stdexcept>
 #include <vector>
 
@@ -82,6 +83,36 @@ public:
     }
 
     return I;
+  }
+
+  // random matrix initialization
+  static Matrix<M> rand_fill(std::size_t row, std::size_t column, M min_range,
+                             M max_range) {
+    auto low = std::min(min_range, max_range);
+    auto high = std::max(min_range, max_range);
+
+    Matrix<M> result(row, column);
+    static thread_local std::mt19937 engine(std::random_device{}());
+
+    if constexpr (std::is_integral_v<M>) {
+      std::uniform_int_distribution<M> distribute(low, high);
+
+      for (std::size_t i{}; i < row; ++i) {
+        for (std::size_t j{}; j < column; ++j) {
+          result(i, j) = distribute(engine);
+        }
+      }
+
+    } else if constexpr (std::is_floating_point_v<M>) {
+      std::uniform_real_distribution<M> distribute(low, high);
+      for (std::size_t i{}; i < row; ++i) {
+        for (std::size_t j{}; j < column; ++j) {
+          result(i, j) = distribute(engine);
+        }
+      }
+    }
+
+    return result;
   }
 
 public:
