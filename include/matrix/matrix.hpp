@@ -430,7 +430,7 @@ public:
     std::vector<M> piv = lu_result.get_permutation_vector();
     std::size_t n = this->row;
 
-    if (lu_result.rank < n) {
+    if (lu_result.get_rank() < n) {
       throw std::runtime_error("Matrix is singular; cannot compute inverse");
     }
 
