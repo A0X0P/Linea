@@ -189,9 +189,10 @@ public:
   // unary minus
   Matrix<M> operator-() {
     Matrix<M> result(row, column);
-    for (auto &data_index : data) {
-      for (auto &value : result.data) {
-        value = (-M{1} * data_index);
+
+    for (std::size_t i{}; i < row; i++) {
+      for (std::size_t j{}; j < column; j++) {
+        result(i, j) = -(*this)(i, j);
       }
     }
     return result;
@@ -245,9 +246,17 @@ public:
   Matrix<M> log() {
 
     Matrix<M> result(this->row, this->column);
-    for (auto &value : this->data) {
-      for (auto &log_value : result.data) {
-        log_value = std::log(value);
+
+    for (std::size_t i{}; i < row; i++) {
+      for (std::size_t j{}; j < column; j++) {
+        M value = (*this)(i, j);
+        if (value <= M{}) {
+          throw std::domain_error(
+              "element at matrix(" + std::to_string(i) + ", " +
+              std::to_string(j) + ") = " + std::to_string(value) +
+              " is <= " + std::to_string(M{}) + "; log undefined");
+        }
+        result(i, j) = std::log(value);
       }
     }
     return result;
@@ -257,9 +266,10 @@ public:
   Matrix<M> pow(M k) {
 
     Matrix<M> result(this->row, this->column);
-    for (auto &value : this->data) {
-      for (auto &pow_value : result.data) {
-        pow_value = std::pow(value, k);
+
+    for (std::size_t i{}; i < row; i++) {
+      for (std::size_t j{}; j < column; j++) {
+        result(i, j) = std::pow((*this)(i, j), k);
       }
     }
     return result;
@@ -269,9 +279,10 @@ public:
   Matrix<M> exp() {
 
     Matrix<M> result(this->row, this->column);
-    for (auto &value : this->data) {
-      for (auto &exp_value : result.data) {
-        exp_value = std::exp(value);
+
+    for (std::size_t i{}; i < row; i++) {
+      for (std::size_t j{}; j < column; j++) {
+        result(i, j) = std::exp((*this)(i, j));
       }
     }
     return result;
