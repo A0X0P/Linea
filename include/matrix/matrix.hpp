@@ -76,8 +76,8 @@ public:
 
   // Static Methods:
 
-  // Indentity
-  static Matrix<M> Indentity(std::size_t row_column) {
+  // Identity
+  static Matrix<M> Identity(std::size_t row_column) {
     Matrix<M> I(row_column, row_column);
 
     for (std::size_t i = 0; i < row_column; ++i) {
@@ -190,10 +190,8 @@ public:
   Matrix<M> operator-() {
     Matrix<M> result(row, column);
 
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        result(i, j) = -(*this)(i, j);
-      }
+    for (std::size_t i{}; i < data.size(); i++) {
+      result.data[i] = -data[i];
     }
     return result;
   }
