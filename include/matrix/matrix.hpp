@@ -331,15 +331,35 @@ public:
   }
 
   // power
-  Matrix<M> pow(M k) {
+  Matrix<int> pow(unsigned int exponent) const {
+    static_assert(std::is_integral_v<M>,
+                  "pow(unsigned) requires integral matrix");
 
-    Matrix<M> result(this->row, this->column);
+    Matrix<int> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
 
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        result(i, j) = std::pow((*this)(i, j), k);
-      }
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = integer_pow(a[i], exponent);
     }
+
+    return result;
+  }
+
+  Matrix<double> pow(double exponent) const {
+    static_assert(std::is_floating_point_v<M>,
+                  "pow(double) requires floating-point matrix");
+
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = std::pow(static_cast<double>(a[i]), exponent);
+    }
+
     return result;
   }
 
