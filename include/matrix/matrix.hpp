@@ -256,6 +256,21 @@ public:
     return result;
   }
 
+  // cosine
+  Matrix<double> cos() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "cos() requires floating-point matrix");
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = std::cos(a[i]);
+    }
+    return result;
+  }
+
   // logarithm
   Matrix<M> log() {
 
