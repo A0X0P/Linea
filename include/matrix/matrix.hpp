@@ -271,6 +271,25 @@ public:
     return result;
   }
 
+  // tangent
+  Matrix<double> tan() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "tan() requires floating-point matrix");
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      if (std::cos(a[i]) == 0.0) {
+        throw std::domain_error("tan undefined for element " +
+                                std::to_string(a[i]));
+      }
+      out[i] = std::tan(a[i]);
+    }
+    return result;
+  }
+
   // logarithm
   Matrix<M> log() {
 
