@@ -290,6 +290,25 @@ public:
     return result;
   }
 
+  // square root
+  Matrix<double> sqrt() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "sqrt() requires floating-point matrix");
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      if (a[i] < 0.0) {
+        throw std::domain_error("sqrt undefined for element " +
+                                std::to_string(a[i]));
+      }
+      out[i] = std::sqrt(a[i]);
+    }
+    return result;
+  }
+
   // logarithm
   Matrix<M> log() {
 
