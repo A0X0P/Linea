@@ -240,6 +240,22 @@ public:
 
   // Mathematical functions
 
+  // sine
+  Matrix<double> sin() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "sin() requires floating-point matrix");
+
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = std::sin(a[i]);
+    }
+    return result;
+  }
+
   // logarithm
   Matrix<M> log() {
 
