@@ -767,6 +767,22 @@ private:
     }
     return x;
   }
+
+  // integer power
+  constexpr int integer_pow(int base, unsigned int exp) noexcept {
+    int result = 1;
+
+    while (exp > 0) {
+      if (exp & 1) {
+        result *= base;
+      }
+      exp >>= 1;
+      if (exp) {
+        base *= base;
+      }
+    }
+    return result;
+  }
 };
 
 // scalar multiplication
