@@ -344,15 +344,19 @@ public:
   }
 
   // exponent
-  Matrix<M> exp() {
+  Matrix<double> exp() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "exp() requires floating-point matrix");
 
-    Matrix<M> result(this->row, this->column);
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
 
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        result(i, j) = std::exp((*this)(i, j));
-      }
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = std::exp(a[i]);
     }
+
     return result;
   }
 
