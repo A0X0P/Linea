@@ -310,22 +310,23 @@ public:
   }
 
   // logarithm
-  Matrix<M> log() {
+  Matrix<double> log() const {
+    static_assert(std::is_floating_point_v<M>,
+                  "log() requires floating-point matrix");
 
-    Matrix<M> result(this->row, this->column);
+    Matrix<double> result(row, column);
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const std::size_t n = data.size();
 
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        M value = (*this)(i, j);
-        if (value <= M{}) {
-          throw std::domain_error(
-              "element at matrix(" + std::to_string(i) + ", " +
-              std::to_string(j) + ") = " + std::to_string(value) +
-              " is <= " + std::to_string(M{}) + "; log undefined");
-        }
-        result(i, j) = std::log(value);
+    for (std::size_t i = 0; i < n; ++i) {
+      if (a[i] <= 0.0) {
+        throw std::domain_error("log undefined for element " +
+                                std::to_string(a[i]));
       }
+      out[i] = std::log(a[i]);
     }
+
     return result;
   }
 
