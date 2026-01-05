@@ -190,8 +190,11 @@ public:
   Matrix<M> operator-() {
     Matrix<M> result(row, column);
 
-    for (std::size_t i{}; i < data.size(); i++) {
-      result.data[i] = -data[i];
+    auto *out = result.data.data();
+    const auto *a = data.data();
+
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = -a[i];
     }
     return result;
   }
