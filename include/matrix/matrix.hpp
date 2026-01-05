@@ -159,11 +159,11 @@ public:
     }
     Matrix<M> result(this->row, this->column);
 
-    for (std::size_t i = 0; i < this->row; ++i) {
-      for (std::size_t j = 0; j < this->column; ++j) {
-        result.data[i * this->column + j] =
-            this->data[i * this->column + j] + other.data[i * this->column + j];
-      }
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = a[i] + in[i];
     }
     return result;
   }
