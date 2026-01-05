@@ -200,14 +200,14 @@ public:
   }
 
   // scalar multiplication
-  Matrix<M> operator*(M scalar) const {
+  Matrix<M> operator*(M scalar) {
 
-    Matrix<M> result(row, column);
+    Matrix<M> result(this->row, this->column);
 
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        result(i, j) = scalar * (*this)(i, j);
-      }
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = scalar * a[i];
     }
     return result;
   }
