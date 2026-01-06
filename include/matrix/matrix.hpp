@@ -12,7 +12,13 @@
 #include <iostream>
 #include <random>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
+
+template <typename T, typename S>
+using scalar_multiply_result_t =
+    std::conditional_t<std::is_integral_v<S> && std::is_integral_v<T>, int,
+                       double>;
 
 template <typename M> struct LUResult {
   std::vector<M> permutation_vector;
@@ -211,6 +217,11 @@ public:
     }
     return result;
   }
+
+  // scalar multiplication
+  template <typename T, typename S>
+  friend Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar,
+                                                          Matrix<T> &matrix);
 
   // matrix multiplication
   Matrix<M> operator*(Matrix<M> &other) {
@@ -809,17 +820,23 @@ private:
 };
 
 // scalar multiplication
-template <typename T, typename Tp>
-// requires std::is_integral_v<T> || std::is_floating_point_v<T>
-Matrix<Tp> operator*(T scalar, Matrix<Tp> &matrix) {
+template <typename T, typename S>
+// requires std::is_integral_v<T> || std::is_floating_point_v<T> ||
+// std::is_integral_v<S> || std::is_floating_point_v<S>
+Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar, Matrix<T> &matrix) {
 
-  Matrix<Tp> result(matrix.getRow(), matrix.getColumn());
+  using ResultType = scalar_multiply_result_t<T, S>;
 
-  for (std::size_t i{}; i < result.getRow(); i++) {
-    for (std::size_t j{}; j < result.getColumn(); j++) {
-      result(i, j) = scalar * matrix(i, j);
-    }
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  Matrix<ResultType> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+
+  for (std::size_t i{}; i < n; i++) {
+    out[i] = static_cast<ResultType>(scalar * a[i]);
   }
+
   return result;
 }
 
