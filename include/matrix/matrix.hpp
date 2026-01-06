@@ -43,6 +43,7 @@ private:
   std::vector<M> data;
 
 public:
+  template <typename U> friend class Matrix;
   // Constructors:
 
   // Matrix() = default;
@@ -206,12 +207,16 @@ public:
   }
 
   // scalar multiplication
-  Matrix<M> operator*(M scalar) {
+  template <typename S>
+  Matrix<scalar_multiply_result_t<M, S>> operator*(S scalar) {
 
-    Matrix<M> result(this->row, this->column);
+    using ResultType = scalar_multiply_result_t<M, S>;
+
+    Matrix<ResultType> result(this->row, this->column);
 
     auto *out = result.data.data();
     const auto *a = data.data();
+
     for (std::size_t i = 0; i < data.size(); ++i) {
       out[i] = scalar * a[i];
     }
