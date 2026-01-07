@@ -461,26 +461,25 @@ public:
   bool singular() noexcept { return Rank() < row; }
 
   // diagonal
-  std::vector<M> diagonal(Diagonal type = Diagonal::Major) {
+  std::vector<M> _diagonal(Diagonal type = Diagonal::Major) {
 
     if (row != column) {
       throw std::invalid_argument("Matrix diagonal requires row == column.");
     }
 
-    std::vector<M> _diagonal(row);
+    const std::size_t n = row;
+    const auto *base = data.data();
 
-    switch (type) {
-    case Diagonal::Major:
-      for (std::size_t i{}; i < this->row; i++) {
-        _diagonal[i] = (*this)(i, i);
-      }
-      break;
-    case Diagonal::Minor:
-      for (std::size_t i{}; i < this->row; i++) {
-        _diagonal[i] = (*this)(i, (row - 1) - i);
-      }
-      break;
+    std::vector<M> _diagonal(n);
+
+    const auto *p = (type == Diagonal::Major) ? base : base + (n - 1);
+
+    const std::size_t stride = (type == Diagonal::Major) ? (n + 1) : (n - 1);
+
+    for (std::size_t i = 0; i < n; ++i, p += stride) {
+      _diagonal[i] = *p;
     }
+
     return _diagonal;
   }
 
