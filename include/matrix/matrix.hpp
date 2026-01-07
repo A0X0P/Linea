@@ -15,6 +15,8 @@
 #include <type_traits>
 #include <vector>
 
+namespace linea {
+
 template <typename T, typename S>
 using scalar_multiply_result_t =
     std::conditional_t<std::is_integral_v<S> && std::is_integral_v<T>, int,
@@ -925,4 +927,5 @@ public:
   }
 };
 
+} // namespace linea
 #endif
