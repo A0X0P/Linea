@@ -442,15 +442,19 @@ public:
   bool empty() noexcept { return this->data.empty(); }
 
   // symmetric
-  bool symmetric() const noexcept {
-    if ((this->row != this->Transpose().row) ||
-        (this->column != this->Transpose().column)) {
+  bool symmetric() noexcept {
+    if (row != column)
       return false;
-    }
 
-    for (std::size_t i{}; i < this->data.size(); i++) {
-      if (this->data[i] != this->Transpose().data[i]) {
-        return false;
+    const auto *a = data.data();
+    const std::size_t n = row;
+
+    for (std::size_t i = 0; i < n; ++i) {
+      const auto *row_i = a + i * n;
+      for (std::size_t j = i + 1; j < n; ++j) {
+        if (row_i[j] != a[j * n + i]) {
+          return false;
+        }
       }
     }
     return true;
