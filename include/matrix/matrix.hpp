@@ -249,6 +249,23 @@ public:
     return result;
   }
 
+  // Hadamard product
+  Matrix<M> Hadamard_product(Matrix<M> other) {
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Hadamard product requires identical dimensions.");
+    }
+    Matrix<M> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = a[i] * in[i];
+    }
+    return result;
+  }
+
   // index
   M &operator()(std::size_t i, std::size_t j) {
     if (i >= row || j >= column) {
