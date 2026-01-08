@@ -190,7 +190,7 @@ public:
     const auto *a = data.data();
     const auto *in = other.data.data();
     for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] + in[i];
+      out[i] = a[i] - in[i];
     }
     return result;
   }
