@@ -527,10 +527,21 @@ public:
   }
 
   // cofactor matrix
-  Matrix<M> cofactor_matrix() {}
+  Matrix<M> cofactor_matrix() {
+    if (row != column) {
+      throw std::invalid_argument("Cofactor matrix requires a square matrix.");
+    }
+    Matrix<M> result(row, column);
+    for (std::size_t i = 0; i < row; ++i) {
+      for (std::size_t j = 0; j < column; ++j) {
+        result(i, j) = cofactor(i, j);
+      }
+    }
+    return result;
+  }
 
   // adjoint
-  Matrix<M> adjoint() {}
+  Matrix<M> adjoint() { return cofactor_matrix().Transpose(); }
 
   // determinant
   M determinant() {
