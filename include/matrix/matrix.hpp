@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace linea {
+namespace Linea {
 
 template <typename T, typename S>
 using scalar_multiply_result_t =
@@ -418,16 +418,12 @@ public:
 
   // insert
   void insert(std::size_t row_index, std::size_t col_index, M number) {
-    if ((row_index >= 0 && row_index < row) &&
-        (col_index >= 0 && col_index < column)) {
-      data[row_index * column + col_index] = number;
-    } else {
-      if (row_index < row) {
-        throw std::invalid_argument("Invalid column index");
-      } else if (col_index < column) {
-        throw std::invalid_argument("Invalid row index");
-      }
+    if ((row_index >= row) || (col_index >= column)) {
+      throw std::out_of_range("Matrix index out of bounds: (" +
+                              std::to_string(row_index) + ", " +
+                              std::to_string(col_index) + ")");
     }
+    data[row_index * column + col_index] = number;
   }
 
   // shape
@@ -931,5 +927,5 @@ public:
   }
 };
 
-} // namespace linea
+} // namespace Linea
 #endif
