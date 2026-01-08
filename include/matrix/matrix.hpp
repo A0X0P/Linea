@@ -159,7 +159,7 @@ public:
   // inequality
   bool operator!=(Matrix<M> other) noexcept { return !(*this == other); }
 
-  // addition
+  // addition (element wise)
   Matrix<M> operator+(Matrix<M> other) {
 
     if ((this->row != other.row) || (this->column != other.column)) {
@@ -177,7 +177,7 @@ public:
     return result;
   }
 
-  // subtraction
+  // subtraction (element wise)
   Matrix<M> operator-(Matrix<M> other) {
 
     if ((this->row != other.row) || (this->column != other.column)) {
@@ -262,6 +262,27 @@ public:
     const auto *in = other.data.data();
     for (std::size_t i = 0; i < data.size(); ++i) {
       out[i] = a[i] * in[i];
+    }
+    return result;
+  }
+
+  // division (element wise)
+  Matrix<M> operator/(Matrix<M> other) {
+
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Matrix division requires identical dimensions.");
+    }
+    Matrix<M> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      if (in[i] == M{0}) {
+        throw std::domain_error("Division by zero.");
+      }
+      out[i] = a[i] / in[i];
     }
     return result;
   }
