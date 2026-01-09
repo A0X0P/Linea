@@ -5,12 +5,12 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
-#include <iterator>
 #include <random>
 #include <stdexcept>
 #include <type_traits>
@@ -464,6 +464,33 @@ public:
   const_reverse_iterator rend() const { return data.rend(); }
   const_iterator cend() const { return data.cend(); }
   const_reverse_iterator crend() const { return data.crend(); }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
+  // Statistical Operations
+
+  M sum() const { return std::accumulate(data.begin(), data.end(), M{0}); }
+
+  double mean() const {
+    if (data.empty()) {
+      throw std::domain_error("Cannot compute mean of empty matrix");
+    }
+    return static_cast<double>(sum()) / static_cast<double>(data.size());
+  }
+
+  M min() const {
+    if (data.empty()) {
+      throw std::runtime_error("Cannot compute minimum of empty matrix");
+    }
+    return std::min_element(data.begin(), data.end());
+  }
+
+  M max() const {
+    if (data.empty()) {
+      throw std::runtime_error("Cannot compute maximum of empty matrix");
+    }
+    return std::max_element(data.begin(), data.end());
+  }
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
