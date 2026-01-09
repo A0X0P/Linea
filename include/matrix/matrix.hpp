@@ -500,6 +500,23 @@ public:
   // singular
   bool singular() noexcept { return Rank() < row; }
 
+  // Trace
+  M trace() {
+    if (row != column) {
+      throw std::invalid_argument("Matrix trace requires row == column.");
+    }
+
+    const std::size_t n = row;
+    const auto *base = data.data();
+    M trace_value = M{0};
+
+    for (std::size_t i = 0; i < n; ++i) {
+      trace_value += base[i * n + i];
+    }
+
+    return trace_value;
+  }
+
   // diagonal
   std::vector<M> _diagonal(Diagonal type = Diagonal::Major) {
 
