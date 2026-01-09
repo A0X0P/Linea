@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
+#include <iterator>
 #include <random>
 #include <stdexcept>
 #include <type_traits>
@@ -438,6 +439,31 @@ public:
 
     return result;
   }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
+  // Iterators
+  using iterator = typename std::vector<M>::iterator;
+  using reverse_iterator = typename std::vector<M>::reverse_iterator;
+  using const_iterator = typename std::vector<M>::const_iterator;
+  using const_reverse_iterator =
+      typename std::vector<M>::const_reverse_iterator;
+
+  // begin
+  iterator begin() { return data.begin(); }
+  reverse_iterator rbegin() { return data.rbegin(); }
+  const_iterator begin() const { return data.begin(); }
+  const_reverse_iterator rbegin() const { return data.rbegin(); }
+  const_iterator cbegin() const { return data.cbegin(); }
+  const_reverse_iterator crbegin() const { return data.crbegin(); }
+
+  // end
+  iterator end() { return data.end(); }
+  reverse_iterator rend() { return data.rend(); }
+  const_iterator end() const { return data.end(); }
+  const_reverse_iterator rend() const { return data.rend(); }
+  const_iterator cend() const { return data.cend(); }
+  const_reverse_iterator crend() const { return data.crend(); }
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
