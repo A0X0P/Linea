@@ -78,11 +78,43 @@ public:
 
   // Getters:
 
-  std::size_t getRow() const { return row; }
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
-  std::size_t getColumn() const { return column; }
+  // Dimension
 
-  std::vector<M> getdata() { return data; }
+  std::size_t nrows() const { return row; }
+
+  std::size_t ncols() const { return column; }
+
+  // Element extraction
+
+  std::vector<M> getRow(std::size_t row_index) const {
+    if (row_index >= row) {
+      throw std::out_of_range("Row index out of range");
+    }
+
+    std::vector<M> result(column);
+    std::copy(data.begin() + row_index * column,
+              data.begin() + (row_index + 1) * column, result.begin());
+    return result;
+  }
+
+  std::vector<M> getColumn(std::size_t column_index) const {
+    if (column_index >= column) {
+      throw std::out_of_range("Column index out of range");
+    }
+    std::vector<M> result(row);
+
+    for (std::size_t j = 0; j < row; ++j) {
+      result[j] = data.at(j * column + column_index);
+    }
+
+    return result;
+  }
+
+  const std::vector<M> &getdata() const & { return data; }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
   // Static Methods:
 
@@ -660,12 +692,12 @@ public:
     LUFactor<M> result = lu_decompose();
     Matrix<M> U_matrix = result.extract_U();
 
-    if (result.get_rank() < U_matrix.getRow()) {
+    if (result.get_rank() < U_matrix.nrows()) {
       return M{0};
     }
 
     M major_diagonal = M{1};
-    for (std::size_t i{}; i < U_matrix.getRow(); i++) {
+    for (std::size_t i{}; i < U_matrix.nrows(); i++) {
       major_diagonal *= U_matrix(i, i);
     }
     bool even_swaps = (result.get_swap_count() % 2 == 0);
@@ -995,8 +1027,8 @@ public:
   // the LU matrix
   Matrix<M> extract_L() const {
 
-    const std::size_t m = LU.getRow();
-    const std::size_t n = LU.getColumn();
+    const std::size_t m = LU.nrows();
+    const std::size_t n = LU.ncols();
     const std::size_t k_max = std::min(m, n);
 
     Matrix<M> L(m, k_max, M{});
@@ -1019,8 +1051,8 @@ public:
   // Extract U as min(m,n) × n upper triangular matrix from LU matrix
   Matrix<M> extract_U() const {
 
-    const std::size_t m = LU.getRow();
-    const std::size_t n = LU.getColumn();
+    const std::size_t m = LU.nrows();
+    const std::size_t n = LU.ncols();
     const std::size_t k_max = std::min(m, n);
 
     Matrix<M> U(k_max, n, M{});
@@ -1036,7 +1068,7 @@ public:
   // Extract permutation matrix P (m × m) such that P*A = L*U
   Matrix<M> extract_P() const {
 
-    const std::size_t m = LU.getRow();
+    const std::size_t m = LU.nrows();
     Matrix<M> P(m, m, M{});
 
     for (std::size_t i{}; i < m; i++) {
