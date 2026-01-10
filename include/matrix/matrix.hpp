@@ -146,6 +146,36 @@ public:
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
+  // Permutation operations
+
+  void swap_row(std::size_t row1, std::size_t row2) {
+    if (row1 >= row || row2 >= row) {
+      throw std::out_of_range("Row index out of range");
+    }
+    if (row1 == row2) {
+      return;
+    }
+
+    std::swap_ranges(data.begin() + row1 * column,
+                     data.begin() + (row1 + 1) * column,
+                     data.begin() + row2 * column);
+  }
+
+  void swap_column(std::size_t column1, std::size_t column2) {
+    if (column1 >= column || column2 >= column) {
+      throw std::out_of_range("Column index out of range");
+    }
+    if (column2 == column1) {
+      return;
+    }
+
+    for (std::size_t i = 0; i < row; ++i) {
+      std::swap(data[i * column + column1], data[i * column + column2]);
+    }
+  }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
   // Static Methods:
 
   // Identity
