@@ -116,6 +116,36 @@ public:
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
+  // Setters:
+
+  void setRow(std::size_t row_index, const std::vector<M> &other) {
+    if (row_index >= row) {
+      throw std::out_of_range("Row index out of range");
+    }
+    if (other.size() != column) {
+      throw std::invalid_argument("Row size mismatch");
+    }
+
+    for (std::size_t i = 0; i < column; ++i) {
+      data[row_index * column + i] = other[i];
+    }
+  }
+
+  void setColumn(std::size_t column_index, const std::vector<M> &other) {
+    if (column_index >= column) {
+      throw std::out_of_range("Column index out of range");
+    }
+    if (other.size() != row) {
+      throw std::invalid_argument("Column size mismatch");
+    }
+
+    for (std::size_t i = 0; i < row; ++i) {
+      data[i * column + column_index] = other[i];
+    }
+  }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
   // Static Methods:
 
   // Identity
