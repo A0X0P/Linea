@@ -633,7 +633,7 @@ public:
   }
 
   // diagonal
-  std::vector<M> _diagonal(Diagonal type = Diagonal::Major) {
+  std::vector<M> diagonal(Diagonal type = Diagonal::Major) {
 
     if (row != column) {
       throw std::invalid_argument("Matrix diagonal requires row == column.");
