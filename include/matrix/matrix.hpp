@@ -701,6 +701,33 @@ public:
   // Rank
   std::size_t Rank() { return lu_decompose().get_rank(); }
 
+  Matrix<M> minor(std::size_t row_idx, std::size_t col_idx) {
+
+    if (row_idx >= row || col_idx >= column) {
+      throw std::out_of_range("Matrix index is out of range.");
+    }
+
+    Matrix<M> minor_matrix(row - 1, column - 1);
+
+    const M *a = data.data();
+    M *out = minor_matrix.data.data();
+
+    for (std::size_t i = 0; i < row; ++i) {
+      if (i == row_idx)
+        continue;
+
+      const M *row_ptr = a + i * column;
+
+      for (std::size_t j = 0; j < column; ++j) {
+        if (j == col_idx)
+          continue;
+        *out++ = row_ptr[j];
+      }
+    }
+
+    return minor_matrix;
+  }
+
   // cofactor
   M cofactor(std::size_t row_index, std::size_t column_index) {
     if (row != column) {
