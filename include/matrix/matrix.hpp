@@ -734,20 +734,7 @@ public:
       throw std::invalid_argument("Cofactor requires a square matrix.");
     }
 
-    if (row_index >= row || column_index >= column) {
-      throw std::out_of_range("Matrix index is out of range.");
-    }
-
-    Matrix<M> minor(row - 1, column - 1);
-    std::size_t k = 0;
-
-    for (std::size_t i = 0; i < row; ++i) {
-      for (std::size_t j = 0; j < column; ++j) {
-        if (i != row_index && j != column_index) {
-          minor.data[k++] = (*this)(i, j);
-        }
-      }
-    }
+    Matrix<M> minor = this->minor(row_index, column_index);
 
     M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
     return sign * minor.determinant();
