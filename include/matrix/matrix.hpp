@@ -701,6 +701,25 @@ public:
   // Rank
   std::size_t Rank() { return lu_decompose().get_rank(); }
 
+  // Reshape
+  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) {
+
+    const std::size_t reshape_size = nrow * ncol;
+
+    if (reshape_size != data.size()) {
+      throw std::invalid_argument(
+          "No possible reshape exist for this combination.");
+    }
+    Matrix<M> result(nrow, ncol);
+    auto *out = result.data.data();
+    auto *in = data.data();
+    for (std::size_t i = 0; i < reshape_size; ++i) {
+      out[i] = in[i];
+    }
+    return result;
+  }
+
+  // submatrix
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) {
 
     if (row_idx >= row || col_idx >= column) {
