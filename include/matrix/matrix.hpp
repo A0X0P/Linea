@@ -728,43 +728,19 @@ public:
     return sub_matrix;
   }
 
-  Matrix<M> minor(std::size_t row_idx, std::size_t col_idx) {
+  // minor
+  M minor(std::size_t row_idx, std::size_t col_idx) {
 
-    if (row_idx >= row || col_idx >= column) {
-      throw std::out_of_range("Matrix index is out of range.");
+    if (row != column) {
+      throw std::invalid_argument("minor requires a square matrix.");
     }
-
-    Matrix<M> minor_matrix(row - 1, column - 1);
-
-    const M *a = data.data();
-    M *out = minor_matrix.data.data();
-
-    for (std::size_t i = 0; i < row; ++i) {
-      if (i == row_idx)
-        continue;
-
-      const M *row_ptr = a + i * column;
-
-      for (std::size_t j = 0; j < column; ++j) {
-        if (j == col_idx)
-          continue;
-        *out++ = row_ptr[j];
-      }
-    }
-
-    return minor_matrix;
+    return subMatrix(row_idx, col_idx).determinant();
   }
 
   // cofactor
   M cofactor(std::size_t row_index, std::size_t column_index) {
-    if (row != column) {
-      throw std::invalid_argument("Cofactor requires a square matrix.");
-    }
-
-    Matrix<M> minor = this->minor(row_index, column_index);
-
     M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
-    return sign * minor.determinant();
+    return sign * minor(row_index, column_index);
   }
 
   // cofactor matrix
