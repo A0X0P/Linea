@@ -211,6 +211,25 @@ public:
     return result;
   }
 
+  // Horizontal concatenation [A ⎯⎯ B]
+  Matrix<M> hstack(const Matrix<M> &other) const {
+    if (row != other.row) {
+      throw std::invalid_argument("hstack requires A.rows == B.rows");
+    }
+
+    Matrix<M> result(row, column + other.column);
+
+    for (std::size_t i = 0; i < row; ++i) {
+      const M *row_a = data.data() + i * column;
+      const M *row_b = other.data.data() + i * other.column;
+      M *row_out = result.data.data() + i * result.column;
+
+      std::copy(row_a, row_a + column, row_out);
+      std::copy(row_b, row_b + other.column, row_out + column);
+    }
+    return result;
+  }
+
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
   // Static Methods:
