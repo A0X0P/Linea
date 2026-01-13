@@ -63,7 +63,7 @@ public:
       : row(row), column(column), data(row * column, value) {}
 
   // data-only initialization
-  Matrix<M>(std::initializer_list<std::initializer_list<M>> list) {
+  Matrix(std::initializer_list<std::initializer_list<M>> list) {
     this->row = list.size();
     this->column = list.begin()->size();
     // Matrix<int> mm = {};
