@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <stdexcept>
@@ -44,6 +45,8 @@ private:
   std::size_t row;
   std::size_t column;
   std::vector<M> data;
+  int width = 2;
+  int precision = 2;
 
 public:
   template <typename U> friend class Matrix;
@@ -114,9 +117,15 @@ public:
 
   const std::vector<M> &getdata() const & { return data; }
 
+  // Display
+  int getDisplayWidth() const { return width; }
+  int getDisplayPrecision() const { return precision; }
+
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
   // Setters:
+
+  // Dimension
 
   void setRow(std::size_t row_index, const std::vector<M> &other) {
     if (row_index >= row) {
@@ -143,6 +152,11 @@ public:
       data[i * column + column_index] = other[i];
     }
   }
+
+  // Display
+  void setDisplayWidth(int w) { width = std::max(0, w); }
+
+  void setDisplayPrecision(int p) { precision = std::max(0, p); }
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
@@ -388,6 +402,11 @@ public:
     return data[i * column + j];
   }
 
+  // output stream
+  template <typename V>
+  // requires std::is_integral_v<V> || std::is_floating_point_v<V>
+  friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
+
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
   // Mathematical functions
@@ -589,14 +608,10 @@ public:
   // Special utility methods:
 
   // display
-  void display() {
-    std::cout << "displaying.." << std::endl;
-    for (std::size_t i{}; i < row; i++) {
-      for (std::size_t j{}; j < column; j++) {
-        std::cout << data[i * column + j] << " ";
-      }
-      std::cout << std::endl;
-    }
+  void display(int width = 2, int precision = 2) {
+    setDisplayWidth(width);
+    setDisplayPrecision(precision);
+    std::cout << *this;
   }
 
   // insert
@@ -1173,6 +1188,38 @@ public:
     return P;
   }
 };
+
+template <typename V>
+// requires std::is_integral_v<V> || std::is_floating_point_v<V>
+std::ostream &operator<<(std::ostream &os, const Matrix<V> &other) {
+
+  auto flags = os.flags();
+  auto prec = os.precision();
+
+  const std::size_t R = other.nrows();
+  const std::size_t C = other.ncols();
+  const int W = other.width;
+  const int P = other.precision;
+
+  os << std::fixed << std::setprecision(P);
+  for (std::size_t i{}; i < R; i++) {
+    os << std::right << std::showpoint << "[ ";
+    for (std::size_t j{}; j < C; j++) {
+      os << std::setw(W) << other.data[i * C + j];
+      if (j < C - 1) {
+        os << ", ";
+      }
+    }
+    os << " ]";
+    if (i < R - 1) {
+      os << "\n";
+    }
+  }
+
+  os.flags(flags);
+  os.precision(prec);
+  return os;
+}
 
 } // namespace Linea
 #endif
