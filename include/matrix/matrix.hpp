@@ -153,7 +153,7 @@ public:
     }
   }
 
-  // Display
+  // Display convenience method
   void setDisplayWidth(int w) { width = std::max(0, w); }
 
   void setDisplayPrecision(int p) { precision = std::max(0, p); }
@@ -186,6 +186,29 @@ public:
     for (std::size_t i = 0; i < row; ++i) {
       std::swap(data[i * column + column1], data[i * column + column2]);
     }
+  }
+
+  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
+  // Concatenation:
+
+  // vertical [A | B]
+  Matrix<M> vstack(const Matrix<M> &other) const {
+    if (column != other.column) {
+      throw std::invalid_argument("vstack requires A.columns == B.columns");
+    }
+
+    Matrix<M> result(row + other.row, column);
+
+    const std::size_t a_size = data.size();
+    const std::size_t b_size = other.data.size();
+
+    std::copy(data.data(), data.data() + a_size, result.data.data());
+
+    std::copy(other.data.data(), other.data.data() + b_size,
+              result.data.data() + a_size);
+
+    return result;
   }
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
