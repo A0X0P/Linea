@@ -950,7 +950,9 @@ public:
 
     Matrix<M> LU = (*this);
 
-    LUResult<M> result;
+    LUResult<M> result{};
+    result.rank = 0;
+    result.swap_count = 0;
     result.permutation_vector.resize(m);
     for (std::size_t i{}; i < m; ++i) {
       result.permutation_vector[i] = i;
