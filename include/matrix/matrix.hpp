@@ -635,14 +635,14 @@ public:
     if (data.empty()) {
       throw std::runtime_error("Cannot compute minimum of empty matrix");
     }
-    return std::min_element(data.begin(), data.end());
+    return *std::min_element(data.begin(), data.end());
   }
 
   M max() const {
     if (data.empty()) {
       throw std::runtime_error("Cannot compute maximum of empty matrix");
     }
-    return std::max_element(data.begin(), data.end());
+    return *std::max_element(data.begin(), data.end());
   }
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
