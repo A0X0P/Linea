@@ -19,24 +19,30 @@
 
 namespace Linea {
 
-template <typename T, typename S>
-using scalar_multiply_result_t =
-    std::conditional_t<std::is_integral_v<S> && std::is_integral_v<T>, int,
-                       double>;
+template <typename T>
+concept NumericType =
+    (std::is_integral_v<T> || std::is_floating_point_v<T>) &&
+    !std::is_same_v<T, bool> && !std::is_same_v<T, char> &&
+    !std::is_same_v<T, signed char> && !std::is_same_v<T, unsigned char> &&
+    !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char8_t> &&
+    !std::is_same_v<T, char16_t> && !std::is_same_v<T, char32_t>;
 
-template <typename M> struct LUResult {
+template <NumericType T, NumericType S>
+using Numeric = std::common_type_t<T, S>;
+
+template <NumericType M> struct LUResult {
   std::vector<M> permutation_vector;
   std::size_t rank;
   std::size_t swap_count;
 };
 
-template <typename M> class LUFactor;
+template <NumericType M> class LUFactor;
 
 enum class NormType { Frobenius, One, Infinity, Spectral };
 
 enum class Diagonal { Major, Minor };
 
-template <typename M>
+template <NumericType M>
 // requires std::is_integral_v<M> || std::is_floating_point_v<M>
 class Matrix {
 
@@ -49,7 +55,7 @@ private:
   int precision = 2;
 
 public:
-  template <typename U> friend class Matrix;
+  template <NumericType U> friend class Matrix;
   // Constructors:
 
   // Matrix() = default;
@@ -79,9 +85,9 @@ public:
     // delete  T_matrix[column][row];
   }
 
-  // Getters:
-
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+
+  // Getters:
 
   // Dimension
 
@@ -310,7 +316,7 @@ public:
     return !(*this == other);
   }
 
-  // addition (element wise)
+  // addition (element wise, same type)
   Matrix<M> operator+(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
@@ -328,7 +334,27 @@ public:
     return result;
   }
 
-  // subtraction (element wise)
+  // addition (element wise, different type)
+
+  template <NumericType T>
+  Matrix<Numeric<M, T>> operator+(const Matrix<T> &other) const {
+
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Matrix addition requires identical dimensions.");
+    }
+    Matrix<Numeric<M, T>> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = a[i] + in[i];
+    }
+    return result;
+  }
+
+  // subtraction (element wise, same type)
   Matrix<M> operator-(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
@@ -336,6 +362,25 @@ public:
           "Matrix subtraction requires identical dimensions.");
     }
     Matrix<M> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = a[i] - in[i];
+    }
+    return result;
+  }
+
+  // subtraction (element wise, different type)
+  template <NumericType T>
+  Matrix<Numeric<M, T>> operator-(const Matrix<T> &other) const {
+
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Matrix subtraction requires identical dimensions.");
+    }
+    Matrix<Numeric<M, T>> result(this->row, this->column);
 
     auto *out = result.data.data();
     const auto *a = data.data();
@@ -359,13 +404,9 @@ public:
     return result;
   }
 
-  // scalar multiplication
-  template <typename S>
-  Matrix<scalar_multiply_result_t<M, S>> operator*(S scalar) const {
-
-    using ResultType = scalar_multiply_result_t<M, S>;
-
-    Matrix<ResultType> result(this->row, this->column);
+  // scalar multiplication (same type)
+  Matrix<M> operator*(M scalar) const {
+    Matrix<M> result(this->row, this->column);
 
     auto *out = result.data.data();
     const auto *a = data.data();
@@ -376,12 +417,29 @@ public:
     return result;
   }
 
-  // scalar multiplication
-  template <typename T, typename S>
-  friend Matrix<scalar_multiply_result_t<T, S>>
-  operator*(S scalar, const Matrix<T> &matrix);
+  // scalar multiplication (Mixed-type closure)
+  template <NumericType S> Matrix<Numeric<M, S>> operator*(S scalar) const {
 
-  // matrix multiplication
+    Matrix<Numeric<M, S>> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = scalar * a[i];
+    }
+    return result;
+  }
+
+  // scalar multiplication (same type closure)
+  template <NumericType T>
+  friend Matrix<T> operator*(T scalar, const Matrix<T> &matrix);
+
+  // scalar multiplication (Mixed-type closure)
+  template <NumericType T, NumericType S>
+  friend Matrix<Numeric<T, S>> operator*(S scalar, const Matrix<T> &matrix);
+
+  // matrix multiplication (same type)
   Matrix<M> operator*(const Matrix<M> &other) const {
     if (this->column != other.row) {
       throw std::invalid_argument("A.column must equal B.row");
@@ -400,7 +458,27 @@ public:
     return result;
   }
 
-  // Hadamard product
+  // matrix multiplication (different type)
+  template <NumericType T>
+  Matrix<Numeric<M, T>> operator*(const Matrix<T> &other) const {
+    if (this->column != other.row) {
+      throw std::invalid_argument("A.column must equal B.row");
+    }
+
+    Matrix<Numeric<M, T>> result(row, other.column);
+    Numeric<M, T> sum{};
+    for (std::size_t i = 0; i < row; ++i) {
+      for (std::size_t k = 0; k < other.row; ++k) {
+        sum = (*this)(i, k);
+        for (std::size_t j = 0; j < other.column; ++j) {
+          result(i, j) += sum * other(k, j);
+        }
+      }
+    }
+    return result;
+  }
+
+  // Hadamard product (same type)
   Matrix<M> Hadamard_product(const Matrix<M> &other) const {
     if ((this->row != other.row) || (this->column != other.column)) {
       throw std::invalid_argument(
@@ -417,7 +495,25 @@ public:
     return result;
   }
 
-  // division (element wise)
+  // Hadamard product (different type)
+  template <NumericType T>
+  Matrix<Numeric<T, M>> Hadamard_product(const Matrix<T> &other) const {
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Hadamard product requires identical dimensions.");
+    }
+    Matrix<Numeric<T, M>> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      out[i] = a[i] * in[i];
+    }
+    return result;
+  }
+
+  // division (element wise, same type)
   Matrix<M> operator/(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
@@ -431,6 +527,28 @@ public:
     const auto *in = other.data.data();
     for (std::size_t i = 0; i < data.size(); ++i) {
       if (in[i] == M{0}) {
+        throw std::domain_error("Division by zero.");
+      }
+      out[i] = a[i] / in[i];
+    }
+    return result;
+  }
+
+  // division (element wise, different type)
+  template <NumericType T>
+  Matrix<Numeric<T, M>> operator/(const Matrix<T> &other) const {
+
+    if ((this->row != other.row) || (this->column != other.column)) {
+      throw std::invalid_argument(
+          "Matrix division requires identical dimensions.");
+    }
+    Matrix<Numeric<T, M>> result(this->row, this->column);
+
+    auto *out = result.data.data();
+    const auto *a = data.data();
+    const auto *in = other.data.data();
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      if (in[i] == T{0}) {
         throw std::domain_error("Division by zero.");
       }
       out[i] = a[i] / in[i];
@@ -453,7 +571,7 @@ public:
   }
 
   // output stream
-  template <typename V>
+  template <NumericType V>
   // requires std::is_integral_v<V> || std::is_floating_point_v<V>
   friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
 
@@ -1141,30 +1259,41 @@ private:
   }
 };
 
-// scalar multiplication
-template <typename T, typename S>
-// requires std::is_integral_v<T> || std::is_floating_point_v<T> ||
-// std::is_integral_v<S> || std::is_floating_point_v<S>
-Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar,
-                                                 const Matrix<T> &matrix) {
-
-  using ResultType = scalar_multiply_result_t<T, S>;
+// scalar multiplication (same type closure)
+template <NumericType T> Matrix<T> operator*(T scalar, Matrix<T> &matrix) {
 
   const auto *a = matrix.data.data();
   const std::size_t n = matrix.data.size();
 
-  Matrix<ResultType> result(matrix.row, matrix.column);
+  Matrix<T> result(matrix.row, matrix.column);
   auto *out = result.data.data();
 
   for (std::size_t i{}; i < n; i++) {
-    out[i] = static_cast<ResultType>(scalar * a[i]);
+    out[i] = (scalar * a[i]);
+  }
+
+  return result;
+}
+
+// scalar multiplication (Mixed-type closure)
+template <NumericType T, NumericType S>
+Matrix<Numeric<T, S>> operator*(S scalar, const Matrix<T> &matrix) {
+
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  Matrix<Numeric<T, S>> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+
+  for (std::size_t i{}; i < n; i++) {
+    out[i] = (scalar * a[i]);
   }
 
   return result;
 }
 
 // LUFactor
-template <typename M> class LUFactor {
+template <NumericType M> class LUFactor {
 
 private:
   // --- attributes ---
@@ -1246,7 +1375,7 @@ public:
   }
 };
 
-template <typename V>
+template <NumericType V>
 // requires std::is_integral_v<V> || std::is_floating_point_v<V>
 std::ostream &operator<<(std::ostream &os, const Matrix<V> &other) {
 
