@@ -293,7 +293,7 @@ public:
   // Operations:
 
   // equality
-  bool operator==(Matrix<M> other) const noexcept {
+  bool operator==(const Matrix<M> &other) const noexcept {
     if ((this->row != other.row) || (this->column != other.column)) {
       return false;
     }
@@ -306,10 +306,12 @@ public:
   };
 
   // inequality
-  bool operator!=(Matrix<M> other) noexcept { return !(*this == other); }
+  bool operator!=(const Matrix<M> &other) const noexcept {
+    return !(*this == other);
+  }
 
   // addition (element wise)
-  Matrix<M> operator+(Matrix<M> other) {
+  Matrix<M> operator+(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
       throw std::invalid_argument(
@@ -327,7 +329,7 @@ public:
   }
 
   // subtraction (element wise)
-  Matrix<M> operator-(Matrix<M> other) {
+  Matrix<M> operator-(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
       throw std::invalid_argument(
@@ -345,7 +347,7 @@ public:
   }
 
   // unary minus
-  Matrix<M> operator-() {
+  Matrix<M> operator-() const {
     Matrix<M> result(row, column);
 
     auto *out = result.data.data();
@@ -359,7 +361,7 @@ public:
 
   // scalar multiplication
   template <typename S>
-  Matrix<scalar_multiply_result_t<M, S>> operator*(S scalar) {
+  Matrix<scalar_multiply_result_t<M, S>> operator*(S scalar) const {
 
     using ResultType = scalar_multiply_result_t<M, S>;
 
@@ -376,11 +378,11 @@ public:
 
   // scalar multiplication
   template <typename T, typename S>
-  friend Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar,
-                                                          Matrix<T> &matrix);
+  friend Matrix<scalar_multiply_result_t<T, S>>
+  operator*(S scalar, const Matrix<T> &matrix);
 
   // matrix multiplication
-  Matrix<M> operator*(Matrix<M> &other) {
+  Matrix<M> operator*(const Matrix<M> &other) const {
     if (this->column != other.row) {
       throw std::invalid_argument("A.column must equal B.row");
     }
@@ -399,7 +401,7 @@ public:
   }
 
   // Hadamard product
-  Matrix<M> Hadamard_product(Matrix<M> other) {
+  Matrix<M> Hadamard_product(const Matrix<M> &other) const {
     if ((this->row != other.row) || (this->column != other.column)) {
       throw std::invalid_argument(
           "Hadamard product requires identical dimensions.");
@@ -416,7 +418,7 @@ public:
   }
 
   // division (element wise)
-  Matrix<M> operator/(Matrix<M> other) {
+  Matrix<M> operator/(const Matrix<M> &other) const {
 
     if ((this->row != other.row) || (this->column != other.column)) {
       throw std::invalid_argument(
@@ -441,6 +443,12 @@ public:
     if (i >= row || j >= column) {
       throw std::out_of_range("Matrix index is out of range.");
     }
+    return data[i * column + j];
+  }
+
+  const M &operator()(std::size_t i, std::size_t j) const {
+    if (i >= row || j >= column)
+      throw std::out_of_range("Matrix index out of range");
     return data[i * column + j];
   }
 
@@ -667,18 +675,18 @@ public:
   }
 
   // shape
-  void shape() {
+  void shape() const {
     std::cout << "(" << row << ", " << column << ")" << std::endl;
   }
 
   // size
-  std::size_t size() { return row * column; }
+  std::size_t size() const { return row * column; }
 
   // empty
-  bool empty() noexcept { return this->data.empty(); }
+  bool empty() const noexcept { return this->data.empty(); }
 
   // symmetric
-  bool symmetric() noexcept {
+  bool symmetric() const noexcept {
     if (row != column)
       return false;
 
@@ -697,13 +705,13 @@ public:
   }
 
   // square
-  bool square() noexcept { return this->row == this->column; }
+  bool square() const noexcept { return this->row == this->column; }
 
   // singular
-  bool singular() noexcept { return Rank() < row; }
+  bool singular() const noexcept { return Rank() < row; }
 
   // Trace
-  M trace() {
+  M trace() const {
     if (row != column) {
       throw std::invalid_argument("Matrix trace requires row == column.");
     }
@@ -720,7 +728,7 @@ public:
   }
 
   // diagonal
-  std::vector<M> diagonal(Diagonal type = Diagonal::Major) {
+  std::vector<M> diagonal(Diagonal type = Diagonal::Major) const {
 
     if (row != column) {
       throw std::invalid_argument("Matrix diagonal requires row == column.");
@@ -756,10 +764,10 @@ public:
   }
 
   // Rank
-  std::size_t Rank() { return lu_decompose().get_rank(); }
+  std::size_t Rank() const { return lu_decompose().get_rank(); }
 
   // Reshape
-  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) {
+  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const {
 
     const std::size_t reshape_size = nrow * ncol;
 
@@ -777,7 +785,7 @@ public:
   }
 
   // submatrix
-  Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) {
+  Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const {
 
     if (row_idx >= row || col_idx >= column) {
       throw std::out_of_range("Matrix index is out of range.");
@@ -805,7 +813,7 @@ public:
   }
 
   // minor
-  M minor(std::size_t row_idx, std::size_t col_idx) {
+  M minor(std::size_t row_idx, std::size_t col_idx) const {
 
     if (row != column) {
       throw std::invalid_argument("minor requires a square matrix.");
@@ -814,13 +822,13 @@ public:
   }
 
   // cofactor
-  M cofactor(std::size_t row_index, std::size_t column_index) {
+  M cofactor(std::size_t row_index, std::size_t column_index) const {
     M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
     return sign * minor(row_index, column_index);
   }
 
   // cofactor matrix
-  Matrix<M> cofactor_matrix() {
+  Matrix<M> cofactor_matrix() const {
     if (row != column) {
       throw std::invalid_argument("Cofactor matrix requires a square matrix.");
     }
@@ -834,10 +842,10 @@ public:
   }
 
   // adjoint
-  Matrix<M> adjoint() { return cofactor_matrix().Transpose(); }
+  Matrix<M> adjoint() const { return cofactor_matrix().Transpose(); }
 
   // determinant
-  M determinant() {
+  M determinant() const {
     if (row != column) {
       throw std::invalid_argument("Matrix determinant requires row == column.");
     }
@@ -858,7 +866,7 @@ public:
   }
 
   // inverse
-  Matrix<M> Inverse() {
+  Matrix<M> Inverse() const {
 
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
@@ -889,7 +897,7 @@ public:
   }
 
   // linear system solver
-  std::vector<M> solve(std::vector<M> b) {
+  std::vector<M> solve(const std::vector<M> &b) const {
 
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
@@ -903,7 +911,7 @@ public:
     return x;
   }
 
-  Matrix<M> solve(Matrix<M> B) {
+  Matrix<M> solve(const Matrix<M> &B) const {
 
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
@@ -934,7 +942,7 @@ public:
   }
 
   // LU Decomposition with partial pivoting.
-  LUFactor<M> lu_decompose(M epsilon = M(0)) {
+  LUFactor<M> lu_decompose(M epsilon = M(0)) const {
 
     const std::size_t m = row;
     const std::size_t n = column;
@@ -1015,7 +1023,7 @@ public:
 
   // Norms
 
-  double norm() {
+  double norm() const {
     double sum = 0;
 
     for (std::size_t i{}; i < this->row * this->column; i++) {
@@ -1024,7 +1032,7 @@ public:
     return std::sqrt(sum);
   }
 
-  double norm(NormType type) {
+  double norm(NormType type) const {
     switch (type) {
     case NormType::Frobenius:
       return norm();
@@ -1042,7 +1050,7 @@ public:
 private:
   // Norm implementation
 
-  double norm_1() {
+  double norm_1() const {
     double max_sum = 0;
     for (std::size_t j{}; j < this->column; j++) {
       double sum = 0;
@@ -1056,7 +1064,7 @@ private:
 
     return max_sum;
   };
-  double norm_infinity() {
+  double norm_infinity() const {
     double max_sum = 0;
 
     for (std::size_t i{}; i < this->row; i++) {
@@ -1071,7 +1079,7 @@ private:
 
     return max_sum;
   };
-  double norm_spectral() {
+  double norm_spectral() const {
     // Spectral norm is the largest singular value
     // For now, i will not compute it
     return 0;
@@ -1079,8 +1087,9 @@ private:
 
   // forward and backward substitution utilities for triangular matrices
 
-  std::vector<M> forward_substitution(Matrix<M> L, std::vector<M> b,
-                                      std::vector<M> piv) {
+  std::vector<M> forward_substitution(const Matrix<M> &L,
+                                      const std::vector<M> &b,
+                                      const std::vector<M> &piv) const {
     std::size_t n = L.row;
     std::vector<M> y(n);
 
@@ -1096,7 +1105,8 @@ private:
     return y;
   }
 
-  std::vector<M> backward_substitution(Matrix<M> U, std::vector<M> y) {
+  std::vector<M> backward_substitution(const Matrix<M> &U,
+                                       const std::vector<M> &y) const {
     std::size_t n = U.row;
     std::vector<M> x(n);
 
@@ -1133,7 +1143,8 @@ private:
 template <typename T, typename S>
 // requires std::is_integral_v<T> || std::is_floating_point_v<T> ||
 // std::is_integral_v<S> || std::is_floating_point_v<S>
-Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar, Matrix<T> &matrix) {
+Matrix<scalar_multiply_result_t<T, S>> operator*(S scalar,
+                                                 const Matrix<T> &matrix) {
 
   using ResultType = scalar_multiply_result_t<T, S>;
 
@@ -1168,13 +1179,15 @@ public:
 
   // getter
 
-  std::size_t get_rank() { return info.rank; }
+  std::size_t get_rank() const { return info.rank; }
 
-  std::size_t get_swap_count() { return info.swap_count; }
+  std::size_t get_swap_count() const { return info.swap_count; }
 
-  std::vector<M> get_permutation_vector() { return info.permutation_vector; }
+  const std::vector<M> &get_permutation_vector() const {
+    return info.permutation_vector;
+  }
 
-  LUResult<M> get_Info() { return info; }
+  const LUResult<M> &get_Info() const { return info; }
 
   // Extract L as m × min(m,n) lower triangular matrix with unit diagonal from
   // the LU matrix
