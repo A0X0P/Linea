@@ -42,9 +42,7 @@ enum class NormType { Frobenius, One, Infinity, Spectral };
 
 enum class Diagonal { Major, Minor };
 
-template <NumericType M>
-// requires std::is_integral_v<M> || std::is_floating_point_v<M>
-class Matrix {
+template <NumericType M> class Matrix {
 
 private:
   // Attributes
@@ -902,6 +900,13 @@ public:
     return result;
   }
 
+  // flatten (row flatten)
+  Matrix<M> flatten() const {
+    Matrix<M> result(1, data.size());
+    std::copy(data.begin(), data.end(), result.data.begin());
+    return result;
+  }
+
   // submatrix
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const {
 
@@ -1376,7 +1381,6 @@ public:
 };
 
 template <NumericType V>
-// requires std::is_integral_v<V> || std::is_floating_point_v<V>
 std::ostream &operator<<(std::ostream &os, const Matrix<V> &other) {
 
   auto flags = os.flags();
