@@ -1319,6 +1319,31 @@ public:
                   
     Matrix<V> reshape(std::size_t rows,
                         std::size_t columns) const;
+
+// Iterators
+using iterator               = typename std::vector<V>::iterator;
+using const_iterator         = typename std::vector<V>::const_iterator;
+using reverse_iterator       = typename std::vector<V>::reverse_iterator;
+using const_reverse_iterator = typename std::vector<V>::const_reverse_iterator;
+
+// begin
+iterator begin() noexcept { return data.begin(); }
+const_iterator begin() const noexcept { return data.begin(); }
+const_iterator cbegin() const noexcept { return data.cbegin(); }
+
+reverse_iterator rbegin() noexcept { return data.rbegin(); }
+const_reverse_iterator rbegin() const noexcept { return data.rbegin(); }
+const_reverse_iterator crbegin() const noexcept { return data.crbegin(); }
+
+// end
+iterator end() noexcept { return data.end(); }
+const_iterator end() const noexcept { return data.end(); }
+const_iterator cend() const noexcept { return data.cend(); }
+
+reverse_iterator rend() noexcept { return data.rend(); }
+const_reverse_iterator rend() const noexcept { return data.rend(); }
+const_reverse_iterator crend() const noexcept { return data.crend(); }
+
                         
     template <NumericType Vv>
     friend std::ostream&
