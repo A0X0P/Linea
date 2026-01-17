@@ -1320,6 +1320,9 @@ public:
     Matrix<V> reshape(std::size_t rows,
                         std::size_t columns) const;
 
+Vector<V> join(const Vector<V>& other) const;
+Vector<V> operator|(const Vector<V>& other) const;
+
 // Iterators
 using iterator               = typename std::vector<V>::iterator;
 using const_iterator         = typename std::vector<V>::const_iterator;
