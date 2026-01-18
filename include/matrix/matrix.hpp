@@ -38,6 +38,8 @@ template <NumericType M> struct LUResult {
 
 template <NumericType M> class LUFactor;
 
+template <NumericType V> class Vector;
+
 enum class NormType { Frobenius, One, Infinity, Spectral };
 
 enum class Diagonal { Major, Minor };
@@ -1261,6 +1263,94 @@ private:
     return result;
   }
 };
+
+
+
+template <NumericType V>
+class Vector {
+
+private:
+    std::vector<V> data;
+
+public:
+    template <NumericType U>
+    friend class Vector;
+
+     //Constructors
+       
+    // initializer-list construction
+    Vector(std::initializer_list<V> list);
+
+    // std::vector copy construction
+    explicit Vector(const std::vector<V>& v);
+
+    // size with fill value
+    Vector(std::size_t size, V value);
+
+    // size-only (zero-initialized)
+    explicit Vector(std::size_t size);
+
+    std::size_t size() const noexcept;
+    
+    const std::vector<V>& data_ref() const & noexcept;
+
+    V& operator[](std::size_t index);
+    const V& operator[](std::size_t index) const;
+
+    V& operator()(std::size_t index);
+    
+    const V& operator()(std::size_t index) const;
+
+    Vector<V> operator+(const Vector<V>& other) const;
+    
+    Vector<V> operator-(const Vector<V>& other) const;
+
+    Vector<V> hadamard(const Vector<V>& other) const;
+    
+    Vector<V> operator*(V scalar) const;
+    
+    V dot(const Vector<V>& other) const;
+    
+    Vector<V> cross(const Vector<V>& other) const;
+      
+    V norm() const; 
+                  
+    Matrix<V> reshape(std::size_t rows,
+                        std::size_t columns) const;
+
+Vector<V> join(const Vector<V>& other) const;
+Vector<V> operator|(const Vector<V>& other) const;
+
+// Iterators
+using iterator               = typename std::vector<V>::iterator;
+using const_iterator         = typename std::vector<V>::const_iterator;
+using reverse_iterator       = typename std::vector<V>::reverse_iterator;
+using const_reverse_iterator = typename std::vector<V>::const_reverse_iterator;
+
+// begin
+iterator begin() noexcept { return data.begin(); }
+const_iterator begin() const noexcept { return data.begin(); }
+const_iterator cbegin() const noexcept { return data.cbegin(); }
+
+reverse_iterator rbegin() noexcept { return data.rbegin(); }
+const_reverse_iterator rbegin() const noexcept { return data.rbegin(); }
+const_reverse_iterator crbegin() const noexcept { return data.crbegin(); }
+
+// end
+iterator end() noexcept { return data.end(); }
+const_iterator end() const noexcept { return data.end(); }
+const_iterator cend() const noexcept { return data.cend(); }
+
+reverse_iterator rend() noexcept { return data.rend(); }
+const_reverse_iterator rend() const noexcept { return data.rend(); }
+const_reverse_iterator crend() const noexcept { return data.crend(); }
+
+                        
+    template <NumericType Vv>
+    friend std::ostream&
+    operator<<(std::ostream& os, const Vector<Vv>& vec);
+};
+
 
 // scalar multiplication (same type closure)
 template <NumericType T> Matrix<T> operator*(T scalar, Matrix<T> &matrix) {
