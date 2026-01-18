@@ -79,9 +79,7 @@ public:
 
   // Destructor:
 
-  ~Matrix() {
-    // delete  T_matrix[column][row];
-  }
+  ~Matrix() {}
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
@@ -570,7 +568,6 @@ public:
 
   // output stream
   template <NumericType V>
-  // requires std::is_integral_v<V> || std::is_floating_point_v<V>
   friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
@@ -1146,6 +1143,7 @@ public:
     return LUFactor<M>(std::move(LU_perm), std::move(result));
   }
 
+  Matrix<M> cholesky() const;
   // Norms
 
   double norm() const {
