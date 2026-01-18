@@ -1301,7 +1301,32 @@ public:
 
   Vector<V> operator-(const Vector<V> &other) const;
 
-  Vector<V> hadamard(const Vector<V> &other) const;
+  Vector<V> hadamard(const Vector<V> &other) const {
+    if (data.size() != other.data.size()) {
+      throw std::invalid_argument("hadamard product requires same size");
+    }
+
+    const std::size_t n = data.size();
+    Vector<V> result(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      result[i] = data[i] * other[i];
+    }
+    return result;
+  }
+
+  template <NumericType T>
+  Vector<Numeric<T, V>> hadamard(const Vector<T> &other) const {
+    if (data.size() != other.data.size()) {
+      throw std::invalid_argument("hadamard product requires same size");
+    }
+
+    const std::size_t n = data.size();
+    Vector<Numeric<T, V>> result(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      result[i] = data[i] * other[i];
+    }
+    return result;
+  }
 
   Vector<V> operator*(V scalar) const;
 
@@ -1318,17 +1343,16 @@ public:
                      data[0] * other[1] - other[0] * data[1]};
   }
 
-  template <Linea::NumericType T>
-  Vector<Linea::Numeric<T, V>> cross(const Vector<T> &other) const {
+  template <NumericType T>
+  Vector<Numeric<T, V>> cross(const Vector<T> &other) const {
 
     if ((data.size() != 3) || (other.data.size() != 3)) {
       throw std::invalid_argument("cross product requires 3D-vectors.");
     }
 
-    return Vector<Linea::Numeric<T, V>>{
-        data[1] * other[2] - other[1] * data[2],
-        -(data[0] * other[2] - other[0] * data[2]),
-        data[0] * other[1] - other[0] * data[1]};
+    return Vector<Numeric<T, V>>{data[1] * other[2] - other[1] * data[2],
+                                 -(data[0] * other[2] - other[0] * data[2]),
+                                 data[0] * other[1] - other[0] * data[1]};
   }
 
   V norm() const;
