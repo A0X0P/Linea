@@ -1264,93 +1264,108 @@ private:
   }
 };
 
-
-
-template <NumericType V>
-class Vector {
+template <NumericType V> class Vector {
 
 private:
-    std::vector<V> data;
+  std::vector<V> data;
 
 public:
-    template <NumericType U>
-    friend class Vector;
+  template <NumericType U> friend class Vector;
 
-     //Constructors
-       
-    // initializer-list construction
-    Vector(std::initializer_list<V> list);
+  // Constructors
 
-    // std::vector copy construction
-    explicit Vector(const std::vector<V>& v);
+  // initializer-list construction
+  Vector(std::initializer_list<V> list);
 
-    // size with fill value
-    Vector(std::size_t size, V value);
+  // std::vector copy construction
+  explicit Vector(const std::vector<V> &v);
 
-    // size-only (zero-initialized)
-    explicit Vector(std::size_t size);
+  // size with fill value
+  Vector(std::size_t size, V value);
 
-    std::size_t size() const noexcept;
-    
-    const std::vector<V>& data_ref() const & noexcept;
+  // size-only (zero-initialized)
+  explicit Vector(std::size_t size);
 
-    V& operator[](std::size_t index);
-    const V& operator[](std::size_t index) const;
+  std::size_t size() const noexcept;
 
-    V& operator()(std::size_t index);
-    
-    const V& operator()(std::size_t index) const;
+  const std::vector<V> &data_ref() const & noexcept;
 
-    Vector<V> operator+(const Vector<V>& other) const;
-    
-    Vector<V> operator-(const Vector<V>& other) const;
+  V &operator[](std::size_t index);
+  const V &operator[](std::size_t index) const;
 
-    Vector<V> hadamard(const Vector<V>& other) const;
-    
-    Vector<V> operator*(V scalar) const;
-    
-    V dot(const Vector<V>& other) const;
-    
-    Vector<V> cross(const Vector<V>& other) const;
-      
-    V norm() const; 
-                  
-    Matrix<V> reshape(std::size_t rows,
-                        std::size_t columns) const;
+  V &operator()(std::size_t index);
 
-Vector<V> join(const Vector<V>& other) const;
-Vector<V> operator|(const Vector<V>& other) const;
+  const V &operator()(std::size_t index) const;
 
-// Iterators
-using iterator               = typename std::vector<V>::iterator;
-using const_iterator         = typename std::vector<V>::const_iterator;
-using reverse_iterator       = typename std::vector<V>::reverse_iterator;
-using const_reverse_iterator = typename std::vector<V>::const_reverse_iterator;
+  Vector<V> operator+(const Vector<V> &other) const;
 
-// begin
-iterator begin() noexcept { return data.begin(); }
-const_iterator begin() const noexcept { return data.begin(); }
-const_iterator cbegin() const noexcept { return data.cbegin(); }
+  Vector<V> operator-(const Vector<V> &other) const;
 
-reverse_iterator rbegin() noexcept { return data.rbegin(); }
-const_reverse_iterator rbegin() const noexcept { return data.rbegin(); }
-const_reverse_iterator crbegin() const noexcept { return data.crbegin(); }
+  Vector<V> hadamard(const Vector<V> &other) const;
 
-// end
-iterator end() noexcept { return data.end(); }
-const_iterator end() const noexcept { return data.end(); }
-const_iterator cend() const noexcept { return data.cend(); }
+  Vector<V> operator*(V scalar) const;
 
-reverse_iterator rend() noexcept { return data.rend(); }
-const_reverse_iterator rend() const noexcept { return data.rend(); }
-const_reverse_iterator crend() const noexcept { return data.crend(); }
+  V dot(const Vector<V> &other) const;
 
-                        
-    template <NumericType Vv>
-    friend std::ostream&
-    operator<<(std::ostream& os, const Vector<Vv>& vec);
+  Vector<V> cross(const Vector<V> &other) const {
+
+    if ((data.size() != 3) || (other.data.size() != 3)) {
+      throw std::invalid_argument("cross product requires 3D-vectors.");
+    }
+
+    return Vector<V>{data[1] * other[2] - other[1] * data[2],
+                     -(data[0] * other[2] - other[0] * data[2]),
+                     data[0] * other[1] - other[0] * data[1]};
+  }
+
+  template <Linea::NumericType T>
+  Vector<Linea::Numeric<T, V>> cross(const Vector<T> &other) const {
+
+    if ((data.size() != 3) || (other.data.size() != 3)) {
+      throw std::invalid_argument("cross product requires 3D-vectors.");
+    }
+
+    return Vector<Linea::Numeric<T, V>>{
+        data[1] * other[2] - other[1] * data[2],
+        -(data[0] * other[2] - other[0] * data[2]),
+        data[0] * other[1] - other[0] * data[1]};
+  }
+
+  V norm() const;
+
+  Matrix<V> reshape(std::size_t rows, std::size_t columns) const;
+
+  Vector<V> join(const Vector<V> &other) const;
+  Vector<V> operator|(const Vector<V> &other) const;
+
+  // Iterators
+  using iterator = typename std::vector<V>::iterator;
+  using const_iterator = typename std::vector<V>::const_iterator;
+  using reverse_iterator = typename std::vector<V>::reverse_iterator;
+  using const_reverse_iterator =
+      typename std::vector<V>::const_reverse_iterator;
+
+  // begin
+  iterator begin() noexcept { return data.begin(); }
+  const_iterator begin() const noexcept { return data.begin(); }
+  const_iterator cbegin() const noexcept { return data.cbegin(); }
+
+  reverse_iterator rbegin() noexcept { return data.rbegin(); }
+  const_reverse_iterator rbegin() const noexcept { return data.rbegin(); }
+  const_reverse_iterator crbegin() const noexcept { return data.crbegin(); }
+
+  // end
+  iterator end() noexcept { return data.end(); }
+  const_iterator end() const noexcept { return data.end(); }
+  const_iterator cend() const noexcept { return data.cend(); }
+
+  reverse_iterator rend() noexcept { return data.rend(); }
+  const_reverse_iterator rend() const noexcept { return data.rend(); }
+  const_reverse_iterator crend() const noexcept { return data.crend(); }
+
+  template <NumericType Vv>
+  friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 };
-
 
 // scalar multiplication (same type closure)
 template <NumericType T> Matrix<T> operator*(T scalar, Matrix<T> &matrix) {
