@@ -1299,7 +1299,32 @@ public:
 
   Vector<V> operator+(const Vector<V> &other) const;
 
-  Vector<V> operator-(const Vector<V> &other) const;
+  Vector<V> operator-(const Vector<V> &other) const {
+    if (data.size() != other.data.size()) {
+      throw std::invalid_argument(
+          "element-wise subtraction requires same size");
+    }
+    const std::size_t n = data.size();
+    Vector<V> result(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      result[i] = data[i] - other[i];
+    }
+    return result;
+  }
+
+  template <NumericType T>
+  Vector<Numeric<T, V>> operator-(const Vector<T> &other) const {
+    if (data.size() != other.data.size()) {
+      throw std::invalid_argument(
+          "element-wise subtraction requires same size");
+    }
+    const std::size_t n = data.size();
+    Vector<Numeric<T, V>> result(n);
+    for (std::size_t i = 0; i < n; ++i) {
+      result[i] = data[i] - other[i];
+    }
+    return result;
+  }
 
   Vector<V> hadamard(const Vector<V> &other) const {
     if (data.size() != other.data.size()) {
