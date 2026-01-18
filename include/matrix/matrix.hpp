@@ -1407,8 +1407,19 @@ public:
 
   Matrix<V> reshape(std::size_t rows, std::size_t columns) const;
 
-  Vector<V> join(const Vector<V> &other) const;
-  Vector<V> operator|(const Vector<V> &other) const;
+  Vector<V> join(const Vector<V> &other) const {
+
+    Vector<V> result(data.size() + other.data.size());
+    const std::size_t this_size = data.size();
+    const std::size_t other_size = other.data.size();
+
+    std::copy(data.data(), data.data() + this_size, result.data.data());
+    std::copy(other.data.data(), other.data.data() + other_size,
+              result.data.data() + this_size);
+
+    return result;
+  }
+  Vector<V> operator|(const Vector<V> &other) const { return join(other); }
 
   // Iterators
   using iterator = typename std::vector<V>::iterator;
