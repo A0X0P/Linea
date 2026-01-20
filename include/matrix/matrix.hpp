@@ -1264,12 +1264,22 @@ public:
   // std::vector copy construction
   explicit Vector(const std::vector<V> &v) : data(v) {};
 
-  std::size_t size() const noexcept;
+  std::size_t size() const noexcept { return data.size(); };
 
-  const std::vector<V> &data_ref() const & noexcept;
+  const std::vector<V> &data_ref() const & noexcept { return data; };
 
-  V &operator[](std::size_t index);
-  const V &operator[](std::size_t index) const;
+  V &operator[](std::size_t index) {
+    if (index >= data.size()) {
+      throw std::invalid_argument("vector index out of range");
+    }
+    return data[index];
+  };
+  const V &operator[](std::size_t index) const {
+    if (index >= data.size()) {
+      throw std::invalid_argument("vector index out of range");
+    }
+    return data[index];
+  };
 
   V &operator()(std::size_t index);
 
@@ -1354,9 +1364,52 @@ public:
     return result;
   }
 
+  // right scalar multiplication (same-type  and Mixed-type closure)
+  template <NumericType S> Vector<Numeric<V, S>> operator*(S scalar) const {
+    Vector<Numeric<V, S>> result(data.size());
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      result[i] = data[i] * scalar;
+    }
+    return result;
+  }
+
+  Matrix<V> outer(const Vector<V> &other) const {
+    const std::size_t rows = data.size();
+    const std::size_t cols = other.data.size();
+
+    Matrix<V> result(rows, cols);
+
+    const V *data_ptr = data.data();
+    const V *other_ptr = other.data.data();
+    V *result_ptr = result.data.data();
+
+    for (std::size_t i = 0; i < rows; ++i) {
+      const V data_ptr_idx = data_ptr[i];
+      V *row_ptr = result_ptr + i * cols;
+
+      for (std::size_t j = 0; j < cols; ++j) {
+        row_ptr[j] = data_ptr_idx * other_ptr[j];
+      }
+    }
+
+    return result;
+  }
+
   Vector<V> operator*(V scalar) const;
 
-  V dot(const Vector<V> &other) const;
+  V dot(const Vector<V> &other) const {
+
+    if (data.size() != other.data.size()) {
+      throw std::invalid_argument("dot product requires same size");
+    }
+
+    const std::size_t n = data.size();
+    V sum = V{0};
+    for (std::size_t i = 0; i < n; ++i) {
+      sum += data[i] * other[i];
+    }
+    return sum;
+  }
 
   Vector<V> cross(const Vector<V> &other) const {
 
@@ -1449,7 +1502,13 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 };
 
-// left scalar multiplication (same-type  and Mixed-type closure)
+// left vector scalar multiplication (same-type  and Mixed-type closure)
+template <NumericType S, NumericType V>
+Vector<Numeric<V, S>> operator*(S scalar, const Vector<V> &vector) {
+  return vector * scalar;
+}
+
+// left matrix scalar multiplication (same-type  and Mixed-type closure)
 template <NumericType S, NumericType M>
 Matrix<Numeric<M, S>> operator*(S scalar, const Matrix<M> &matrix) {
   return matrix * scalar;
