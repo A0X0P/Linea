@@ -402,40 +402,18 @@ public:
     return result;
   }
 
-  // scalar multiplication (same type)
-  Matrix<M> operator*(M scalar) const {
-    Matrix<M> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = scalar * a[i];
-    }
-    return result;
-  }
-
-  // scalar multiplication (Mixed-type closure)
+  // right scalar multiplication (same-type  and Mixed-type closure)
   template <NumericType S> Matrix<Numeric<M, S>> operator*(S scalar) const {
-
-    Matrix<Numeric<M, S>> result(this->row, this->column);
+    Matrix<Numeric<M, S>> result(row, column);
 
     auto *out = result.data.data();
     const auto *a = data.data();
 
     for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = scalar * a[i];
+      out[i] = a[i] * scalar;
     }
     return result;
   }
-
-  // scalar multiplication (same type closure)
-  template <NumericType T>
-  friend Matrix<T> operator*(T scalar, const Matrix<T> &matrix);
-
-  // scalar multiplication (Mixed-type closure)
-  template <NumericType T, NumericType S>
-  friend Matrix<Numeric<T, S>> operator*(S scalar, const Matrix<T> &matrix);
 
   // matrix multiplication (same type)
   Matrix<M> operator*(const Matrix<M> &other) const {
@@ -1471,37 +1449,10 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 };
 
-// scalar multiplication (same type closure)
-template <NumericType T> Matrix<T> operator*(T scalar, Matrix<T> &matrix) {
-
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  Matrix<T> result(matrix.row, matrix.column);
-  auto *out = result.data.data();
-
-  for (std::size_t i{}; i < n; i++) {
-    out[i] = (scalar * a[i]);
-  }
-
-  return result;
-}
-
-// scalar multiplication (Mixed-type closure)
-template <NumericType T, NumericType S>
-Matrix<Numeric<T, S>> operator*(S scalar, const Matrix<T> &matrix) {
-
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  Matrix<Numeric<T, S>> result(matrix.row, matrix.column);
-  auto *out = result.data.data();
-
-  for (std::size_t i{}; i < n; i++) {
-    out[i] = (scalar * a[i]);
-  }
-
-  return result;
+// left scalar multiplication (same-type  and Mixed-type closure)
+template <NumericType S, NumericType M>
+Matrix<Numeric<M, S>> operator*(S scalar, const Matrix<M> &matrix) {
+  return matrix * scalar;
 }
 
 // LUFactor
