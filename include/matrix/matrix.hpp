@@ -1274,17 +1274,17 @@ public:
 
   // Constructors
 
-  // initializer-list construction
-  Vector(std::initializer_list<V> list);
-
-  // std::vector copy construction
-  explicit Vector(const std::vector<V> &v);
-
   // size with fill value
-  Vector(std::size_t size, V value);
+  Vector(std::size_t size, V value) : data(size, value) {};
 
   // size-only (zero-initialized)
-  explicit Vector(std::size_t size);
+  explicit Vector(std::size_t size) : data(size, V{0}) {};
+
+  // initializer-list construction
+  Vector(std::initializer_list<V> list) : data(list) {};
+
+  // std::vector copy construction
+  explicit Vector(const std::vector<V> &v) : data(v) {};
 
   std::size_t size() const noexcept;
 
