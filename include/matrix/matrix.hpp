@@ -1436,7 +1436,16 @@ public:
 
   V norm() const;
 
-  Matrix<V> reshape(std::size_t rows, std::size_t columns) const;
+  Matrix<V> reshape(std::size_t rows, std::size_t columns) const {
+    if (rows * columns != data.size()) {
+      throw std::invalid_argument(
+          "reshape dimensions do not match vector size");
+    }
+
+    Matrix<V> result(rows, columns);
+    std::copy(data.begin(), data.end(), result.begin());
+    return result;
+  };
 
   Vector<V> join(const Vector<V> &other) const {
     const std::size_t this_size = data.size();
