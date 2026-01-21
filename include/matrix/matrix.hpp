@@ -30,15 +30,14 @@ concept NumericType =
 template <NumericType T, NumericType S>
 using Numeric = std::common_type_t<T, S>;
 
+template <NumericType V> class Vector;
 template <NumericType M> struct LUResult {
-  std::vector<M> permutation_vector;
+  Vector<M> permutation_vector;
   std::size_t rank;
   std::size_t swap_count;
 };
 
 template <NumericType M> class LUFactor;
-
-template <NumericType V> class Vector;
 
 enum class NormType { Frobenius, One, Infinity, Spectral };
 
@@ -95,22 +94,22 @@ public:
 
   // Element extraction
 
-  std::vector<M> getRow(std::size_t row_index) const {
+  Vector<M> getRow(std::size_t row_index) const {
     if (row_index >= row) {
       throw std::out_of_range("Row index out of range");
     }
 
-    std::vector<M> result(column);
+    Vector<M> result(column);
     std::copy(data.begin() + row_index * column,
               data.begin() + (row_index + 1) * column, result.begin());
     return result;
   }
 
-  std::vector<M> getColumn(std::size_t column_index) const {
+  Vector<M> getColumn(std::size_t column_index) const {
     if (column_index >= column) {
       throw std::out_of_range("Column index out of range");
     }
-    std::vector<M> result(row);
+    Vector<M> result(row);
 
     for (std::size_t j = 0; j < row; ++j) {
       result[j] = data.at(j * column + column_index);
@@ -131,7 +130,7 @@ public:
 
   // Dimension
 
-  void setRow(std::size_t row_index, const std::vector<M> &other) {
+  void setRow(std::size_t row_index, const Vector<M> &other) {
     if (row_index >= row) {
       throw std::out_of_range("Row index out of range");
     }
@@ -144,7 +143,7 @@ public:
     }
   }
 
-  void setColumn(std::size_t column_index, const std::vector<M> &other) {
+  void setColumn(std::size_t column_index, const Vector<M> &other) {
     if (column_index >= column) {
       throw std::out_of_range("Column index out of range");
     }
@@ -659,7 +658,8 @@ public:
     return result;
   }
 
-  template <typename U = M, std::enable_if_t<std::is_floating_point_v<U>, int> = 0>
+  template <typename U = M,
+            std::enable_if_t<std::is_floating_point_v<U>, int> = 0>
   Matrix<double> pow(double exponent) const {
     Matrix<double> result(row, column);
     auto *out = result.data.data();
@@ -817,7 +817,7 @@ public:
   }
 
   // diagonal
-  std::vector<M> diagonal(Diagonal type = Diagonal::Major) const {
+  Vector<M> diagonal(Diagonal type = Diagonal::Major) const {
 
     if (row != column) {
       throw std::invalid_argument("Matrix diagonal requires row == column.");
@@ -826,7 +826,7 @@ public:
     const std::size_t n = row;
     const auto *base = data.data();
 
-    std::vector<M> _diagonal(n);
+    Vector<M> _diagonal(n);
 
     const auto *p = (type == Diagonal::Major) ? base : base + (n - 1);
 
@@ -967,7 +967,7 @@ public:
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
     Matrix<M> U = lu_result.extract_U();
-    std::vector<M> piv = lu_result.get_permutation_vector();
+    Vector<M> piv = lu_result.get_permutation_vector();
     std::size_t n = this->row;
 
     if (lu_result.get_rank() < n) {
@@ -978,12 +978,12 @@ public:
 
     for (std::size_t i = 0; i < n; i++) {
 
-      std::vector<M> e_i(n, M{});
+      Vector<M> e_i(n, M{});
       e_i[i] = M{1};
 
-      std::vector<M> y = forward_substitution(L, e_i, piv);
+      Vector<M> y = forward_substitution(L, e_i, piv);
 
-      std::vector<M> x = backward_substitution(U, y);
+      Vector<M> x = backward_substitution(U, y);
 
       for (std::size_t j = 0; j < n; j++) {
         inverse_matrix(j, i) = x[j];
@@ -993,16 +993,16 @@ public:
   }
 
   // linear system solver
-  std::vector<M> solve(const std::vector<M> &b) const {
+  Vector<M> solve(const Vector<M> &b) const {
 
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
     Matrix<M> U = lu_result.extract_U();
-    std::vector<M> piv = lu_result.get_permutation_vector();
+    Vector<M> piv = lu_result.get_permutation_vector();
 
-    std::vector<M> y = forward_substitution(L, b, piv);
+    Vector<M> y = forward_substitution(L, b, piv);
 
-    std::vector<M> x = backward_substitution(U, y);
+    Vector<M> x = backward_substitution(U, y);
 
     return x;
   }
@@ -1012,7 +1012,7 @@ public:
     LUFactor<M> lu_result = lu_decompose();
     Matrix<M> L = lu_result.extract_L();
     Matrix<M> U = lu_result.extract_U();
-    std::vector<M> piv = lu_result.get_permutation_vector();
+    Vector<M> piv = lu_result.get_permutation_vector();
 
     std::size_t n = this->row;
     std::size_t m = B.column;
@@ -1021,13 +1021,13 @@ public:
 
     for (std::size_t i = 0; i < m; i++) {
 
-      std::vector<M> b_i(n);
+      Vector<M> b_i(n);
       for (std::size_t j = 0; j < n; j++) {
         b_i[j] = B(j, i);
       }
 
-      std::vector<M> y = forward_substitution(L, b_i, piv);
-      std::vector<M> x = backward_substitution(U, y);
+      Vector<M> y = forward_substitution(L, b_i, piv);
+      Vector<M> x = backward_substitution(U, y);
 
       for (std::size_t j = 0; j < n; j++) {
         X(j, i) = x[j];
@@ -1049,11 +1049,11 @@ public:
     LUResult<M> result{};
     result.rank = 0;
     result.swap_count = 0;
-    result.permutation_vector.resize(m);
+    result.permutation_vector = Vector<M>(m);
     for (std::size_t i{}; i < m; ++i) {
       result.permutation_vector[i] = i;
     }
-    std::vector<M> row_index = result.permutation_vector;
+    Vector<M> row_index = result.permutation_vector;
 
     // Compute adaptive epsilon if not provided by the user
     M effective_epsilon = epsilon;
@@ -1186,11 +1186,10 @@ private:
 
   // forward and backward substitution utilities for triangular matrices
 
-  std::vector<M> forward_substitution(const Matrix<M> &L,
-                                      const std::vector<M> &b,
-                                      const std::vector<M> &piv) const {
+  Vector<M> forward_substitution(const Matrix<M> &L, const Vector<M> &b,
+                                 const Vector<M> &piv) const {
     std::size_t n = L.row;
-    std::vector<M> y(n);
+    Vector<M> y(n);
 
     for (std::size_t i = 0; i < n; ++i) {
       M sum{};
@@ -1204,10 +1203,10 @@ private:
     return y;
   }
 
-  std::vector<M> backward_substitution(const Matrix<M> &U,
-                                       const std::vector<M> &y) const {
+  Vector<M> backward_substitution(const Matrix<M> &U,
+                                  const Vector<M> &y) const {
     std::size_t n = U.row;
-    std::vector<M> x(n);
+    Vector<M> x(n);
 
     for (std::size_t i = n; i-- > 0;) {
       M sum{};
@@ -1541,7 +1540,7 @@ public:
 
   std::size_t get_swap_count() const { return info.swap_count; }
 
-  const std::vector<M> &get_permutation_vector() const {
+  const Vector<M> &get_permutation_vector() const {
     return info.permutation_vector;
   }
 
