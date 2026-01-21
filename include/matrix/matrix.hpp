@@ -1226,7 +1226,7 @@ private:
   }
 
   // integer power
-  constexpr int integer_pow(int base, unsigned int exp) noexcept {
+  constexpr int integer_pow(int base, unsigned int exp) const noexcept {
     int result = 1;
 
     while (exp > 0) {
