@@ -645,10 +645,8 @@ public:
   }
 
   // power
+  template <typename U = M, std::enable_if_t<std::is_integral_v<U>, int> = 0>
   Matrix<int> pow(unsigned int exponent) const {
-    static_assert(std::is_integral_v<M>,
-                  "pow(unsigned) requires integral matrix");
-
     Matrix<int> result(row, column);
     auto *out = result.data.data();
     const auto *a = data.data();
@@ -661,10 +659,8 @@ public:
     return result;
   }
 
+  template <typename U = M, std::enable_if_t<std::is_floating_point_v<U>, int> = 0>
   Matrix<double> pow(double exponent) const {
-    static_assert(std::is_floating_point_v<M>,
-                  "pow(double) requires floating-point matrix");
-
     Matrix<double> result(row, column);
     auto *out = result.data.data();
     const auto *a = data.data();
@@ -1226,7 +1222,7 @@ private:
   }
 
   // integer power
-  constexpr int integer_pow(int base, unsigned int exp) const noexcept {
+  static constexpr int integer_pow(int base, unsigned int exp) noexcept {
     int result = 1;
 
     while (exp > 0) {
