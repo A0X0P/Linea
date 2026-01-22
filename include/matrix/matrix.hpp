@@ -660,20 +660,25 @@ public:
 
   // Statistical Operations
 
-  M sum() const { return std::accumulate(data.begin(), data.end(), M{0}); }
-
-  double mean() const {
-    if (data.empty()) {
-      throw std::domain_error("Cannot compute mean of empty matrix");
-    }
-    return static_cast<double>(sum()) / static_cast<double>(data.size());
+  template <IntegralType I = M> std::common_type_t<I, long long> sum() const {
+    return std::accumulate(data.begin(), data.end(),
+                           std::common_type_t<I, long long>{0});
   }
 
-  M min() const {
-    if (data.empty()) {
-      throw std::runtime_error("Cannot compute minimum of empty matrix");
-    }
-    return *std::min_element(data.begin(), data.end());
+  template <RealType R = M> R sum() const {
+    return std::accumulate(data.begin(), data.end(), R{0});
+  }
+
+  template <IntegralType I = M> std::common_type_t<I, double> mean() const {
+    if (data.empty())
+      throw std::domain_error("Cannot compute mean of empty matrix");
+    return static_cast<std::common_type_t<I, double>>(sum()) / data.size();
+  }
+
+  template <RealType R = M> R mean() const {
+    if (data.empty())
+      throw std::domain_error("Cannot compute mean of empty matrix");
+    return sum() / static_cast<R>(data.size());
   }
 
   M max() const {
