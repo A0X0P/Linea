@@ -75,27 +75,27 @@ public:
 
   // data-only initialization
   explicit Matrix(std::initializer_list<std::initializer_list<M>> list)
-    : row(list.size()), column(0)
-{
+      : row(list.size()), column(0) {
     if (row == 0) {
-        throw std::invalid_argument("Matrix initializer_list cannot be empty");
+      throw std::invalid_argument("Matrix initializer_list cannot be empty");
     }
 
     column = list.begin()->size();
     if (column == 0) {
-        throw std::invalid_argument("Matrix initializer_list rows cannot be empty");
+      throw std::invalid_argument(
+          "Matrix initializer_list rows cannot be empty");
     }
 
     data.reserve(row * column);
 
-    for (const auto& r : list) {
-        if (r.size() != column) {
-            throw std::invalid_argument(
-                "All rows in Matrix initializer_list must have the same size");
-        }
-        data.insert(data.end(), r.begin(), r.end());
+    for (const auto &r : list) {
+      if (r.size() != column) {
+        throw std::invalid_argument(
+            "All rows in Matrix initializer_list must have the same size");
+      }
+      data.insert(data.end(), r.begin(), r.end());
     }
-}
+  }
 
   // Destructor:
 
@@ -1461,6 +1461,15 @@ public:
     return result;
   };
 
+  // Mathematical operations
+
+  template <RealType N> friend inline Vector<N> sin(const Vector<N> &);
+  template <RealType N> friend inline Vector<N> cos(const Vector<N> &);
+  template <RealType N> friend inline Vector<N> tan(const Vector<N> &);
+  template <RealType N> friend inline Vector<N> sqrt(const Vector<N> &);
+  template <RealType N> friend inline Vector<N> log(const Vector<N> &);
+  template <RealType N> friend inline Vector<N> exp(const Vector<N> &);
+  /// Concatenation
   Vector<V> join(const Vector<V> &other) const {
     const std::size_t this_size = data.size();
     const std::size_t other_size = other.data.size();
@@ -1524,6 +1533,79 @@ public:
   template <NumericType Vv>
   friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 };
+
+template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  for (std::size_t i = 0; i < n; ++i)
+    out[i] = std::sin(in[i]);
+  return result;
+}
+
+template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  for (std::size_t i = 0; i < n; ++i)
+    out[i] = std::cos(in[i]);
+  return result;
+}
+
+template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  constexpr N eps = N(1e-12);
+  for (std::size_t i = 0; i < n; ++i) {
+    if (std::abs(std::cos(in[i])) < eps)
+      throw std::domain_error("tan undefined for element " +
+                              std::to_string(in[i]));
+    out[i] = std::tan(in[i]);
+  }
+  return result;
+}
+
+template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  for (std::size_t i = 0; i < n; ++i) {
+    if (in[i] < N(0))
+      throw std::domain_error("sqrt undefined for element " +
+                              std::to_string(in[i]));
+    out[i] = std::sqrt(in[i]);
+  }
+  return result;
+}
+
+template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  for (std::size_t i = 0; i < n; ++i) {
+    if (in[i] <= N(0))
+      throw std::domain_error("log undefined for element " +
+                              std::to_string(in[i]));
+    out[i] = std::log(in[i]);
+  }
+  return result;
+}
+
+template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
+  const std::size_t n = vec.data.size();
+  Vector<N> result(n);
+  const N *in = vec.data.data();
+  N *out = result.data.data();
+  for (std::size_t i = 0; i < n; ++i)
+    out[i] = std::exp(in[i]);
+  return result;
+}
 
 // left vector scalar multiplication (same-type  and Mixed-type closure)
 template <NumericType S, NumericType V>
