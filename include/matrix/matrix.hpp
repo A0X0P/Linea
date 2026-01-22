@@ -314,19 +314,30 @@ public:
 
   // Operations:
 
+  template <RealType N>
+  static bool floating_point_equality(N a, N b, N abs_eps = N{1e-12},
+                                      N rel_eps = N{1e-8}) noexcept {
+    return std::fabs(a - b) <=
+           abs_eps + rel_eps * std::max(std::fabs(a), std::fabs(b));
+  }
+
   // equality
   bool operator==(const Matrix<M> &other) const noexcept {
-    if ((this->row != other.row) || (this->column != other.column)) {
+    if (row != other.row || column != other.column)
       return false;
-    }
-    for (std::size_t i{}; i < this->data.size(); i++) {
-      if (this->data[i] != other.data[i]) {
-        return false;
-      }
-    }
-    return true;
-  };
 
+    if constexpr (IntegralType<M>) {
+      for (std::size_t i = 0; i < data.size(); ++i)
+        if (data[i] != other.data[i])
+          return false;
+    } else if constexpr (RealType<M>) {
+      for (std::size_t i = 0; i < data.size(); ++i)
+        if (!floating_point_equality(data[i], other.data[i]))
+          return false;
+    }
+
+    return true;
+  }
   // inequality
   bool operator!=(const Matrix<M> &other) const noexcept {
     return !(*this == other);
