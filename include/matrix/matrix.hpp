@@ -584,94 +584,22 @@ public:
   // Mathematical functions
 
   // sine
-  Matrix<double> sin() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "sin() requires floating-point matrix");
-
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = std::sin(a[i]);
-    }
-    return result;
-  }
+  template <RealType N> friend inline Matrix<N> sin(const Matrix<N> &matrix);
 
   // cosine
-  Matrix<double> cos() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "cos() requires floating-point matrix");
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = std::cos(a[i]);
-    }
-    return result;
-  }
+  template <RealType N> friend inline Matrix<N> cos(const Matrix<N> &matrix);
 
   // tangent
-  Matrix<double> tan() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "tan() requires floating-point matrix");
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      if (std::cos(a[i]) == 0.0) {
-        throw std::domain_error("tan undefined for element " +
-                                std::to_string(a[i]));
-      }
-      out[i] = std::tan(a[i]);
-    }
-    return result;
-  }
-
-  // square root
-  Matrix<double> sqrt() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "sqrt() requires floating-point matrix");
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      if (a[i] < 0.0) {
-        throw std::domain_error("sqrt undefined for element " +
-                                std::to_string(a[i]));
-      }
-      out[i] = std::sqrt(a[i]);
-    }
-    return result;
-  }
+  template <RealType N> friend inline Matrix<N> tan(const Matrix<N> &matrix);
 
   // logarithm
-  Matrix<double> log() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "log() requires floating-point matrix");
+  template <RealType N> friend inline Matrix<N> log(const Matrix<N> &matrix);
 
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
+  // square root
+  template <RealType N> friend inline Matrix<N> sqrt(const Matrix<N> &matrix);
 
-    for (std::size_t i = 0; i < n; ++i) {
-      if (a[i] <= 0.0) {
-        throw std::domain_error("log undefined for element " +
-                                std::to_string(a[i]));
-      }
-      out[i] = std::log(a[i]);
-    }
-
-    return result;
-  }
+  // exponent
+  template <RealType N> friend inline Matrix<N> exp(const Matrix<N> &matrix);
 
   // power
   template <typename U = M, std::enable_if_t<std::is_integral_v<U>, int> = 0>
@@ -698,23 +626,6 @@ public:
 
     for (std::size_t i = 0; i < n; ++i) {
       out[i] = std::pow(static_cast<double>(a[i]), exponent);
-    }
-
-    return result;
-  }
-
-  // exponent
-  Matrix<double> exp() const {
-    static_assert(std::is_floating_point_v<M>,
-                  "exp() requires floating-point matrix");
-
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = std::exp(a[i]);
     }
 
     return result;
@@ -1472,7 +1383,7 @@ public:
     return result;
   };
 
-  // Mathematical operations
+  // Mathematical functions
 
   template <RealType N> friend inline Vector<N> sin(const Vector<N> &);
   template <RealType N> friend inline Vector<N> cos(const Vector<N> &);
@@ -1545,6 +1456,8 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 };
 
+/// Vector mathematical functions
+// sine
 template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1555,6 +1468,7 @@ template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
   return result;
 }
 
+// cosine
 template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1565,6 +1479,7 @@ template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
   return result;
 }
 
+// tangent
 template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1580,6 +1495,7 @@ template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
   return result;
 }
 
+// square root
 template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1594,6 +1510,7 @@ template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
   return result;
 }
 
+// logarithm
 template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1608,6 +1525,7 @@ template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
   return result;
 }
 
+// exponent
 template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
@@ -1622,6 +1540,90 @@ template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
 template <NumericType S, NumericType V>
 Vector<Numeric<V, S>> operator*(S scalar, const Vector<V> &vector) {
   return vector * scalar;
+}
+
+/// Matrix  mathematical functions
+// sine
+template <RealType N> inline Matrix<N> sin(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::sin(a[i]);
+  }
+  return result;
+};
+// cosine
+template <RealType N> inline Matrix<N> cos(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::cos(a[i]);
+  }
+  return result;
+};
+
+// tangent
+template <RealType N> inline Matrix<N> tan(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::tan(a[i]);
+  }
+  return result;
+}
+
+// square root
+template <RealType N> inline Matrix<N> sqrt(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::sqrt(a[i]);
+  }
+  return result;
+}
+
+// logarithm
+template <RealType N> inline Matrix<N> log(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::log(a[i]);
+  }
+
+  return result;
+}
+// exponent
+template <RealType N> inline Matrix<N> exp(const Matrix<N> &matrix) {
+
+  Matrix<N> result(matrix.row, matrix.column);
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = std::exp(a[i]);
+  }
+
+  return result;
 }
 
 // left matrix scalar multiplication (same-type  and Mixed-type closure)
