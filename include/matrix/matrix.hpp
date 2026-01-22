@@ -68,15 +68,28 @@ public:
       : row(row), column(column), data(row * column, value) {}
 
   // data-only initialization
-  Matrix(std::initializer_list<std::initializer_list<M>> list) {
-    this->row = list.size();
-    this->column = list.begin()->size();
-    // Matrix<int> mm = {};
-    for (const auto &values : list) {
-      assert(values.size() == this->column);
-      this->data.insert(this->data.end(), values.begin(), values.end());
+  explicit Matrix(std::initializer_list<std::initializer_list<M>> list)
+    : row(list.size()), column(0)
+{
+    if (row == 0) {
+        throw std::invalid_argument("Matrix initializer_list cannot be empty");
     }
-  }
+
+    column = list.begin()->size();
+    if (column == 0) {
+        throw std::invalid_argument("Matrix initializer_list rows cannot be empty");
+    }
+
+    data.reserve(row * column);
+
+    for (const auto& r : list) {
+        if (r.size() != column) {
+            throw std::invalid_argument(
+                "All rows in Matrix initializer_list must have the same size");
+        }
+        data.insert(data.end(), r.begin(), r.end());
+    }
+}
 
   // Destructor:
 
