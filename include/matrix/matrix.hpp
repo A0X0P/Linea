@@ -1259,6 +1259,31 @@ public:
 
   // std::vector copy construction
   explicit Vector(const std::vector<V> &v) : data(v) {};
+  static Vector<V> rand_fill(std::size_t size, V min_range, V max_range) {
+    auto low = std::min(min_range, max_range);
+    auto high = std::max(min_range, max_range);
+
+    Vector<V> result(size);
+    static thread_local std::mt19937 engine(std::random_device{}());
+
+    if constexpr (std::is_integral_v<V>) {
+      std::uniform_int_distribution<V> distribute(low, high);
+      for (std::size_t i{}; i < size; ++i) {
+        result[i] = distribute(engine);
+      }
+
+    } else if constexpr (std::is_floating_point_v<V>) {
+      std::uniform_real_distribution<V> distribute(low, high);
+      for (std::size_t i{}; i < size; ++i) {
+        result[i] = distribute(engine);
+      }
+    }
+
+    return result;
+  }
+
+  // vector3D initialization
+  Vector(const Vector3D<V> &v) : data(v.getdata().begin(), v.getdata().end()) {}
 
   std::size_t size() const noexcept { return data.size(); };
 
