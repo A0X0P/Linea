@@ -584,23 +584,12 @@ public:
 
   // Mathematical functions
 
-  // sine
-  template <RealType N> friend inline Matrix<N> sin(const Matrix<N> &matrix);
-
-  // cosine
-  template <RealType N> friend inline Matrix<N> cos(const Matrix<N> &matrix);
-
-  // tangent
-  template <RealType N> friend inline Matrix<N> tan(const Matrix<N> &matrix);
-
-  // logarithm
-  template <RealType N> friend inline Matrix<N> log(const Matrix<N> &matrix);
-
-  // square root
-  template <RealType N> friend inline Matrix<N> sqrt(const Matrix<N> &matrix);
-
-  // exponent
-  template <RealType N> friend inline Matrix<N> exp(const Matrix<N> &matrix);
+  template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> cos(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> tan(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> sqrt(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> log(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> exp(const Matrix<N> &);
 
   // power
   template <RealType U>
@@ -1637,86 +1626,108 @@ Vector<Numeric<V, S>> operator*(S scalar, const Vector<V> &vector) {
 }
 
 /// Matrix  mathematical functions
-// sine
-template <RealType N> inline Matrix<N> sin(const Matrix<N> &matrix) {
 
-  Matrix<N> result(matrix.row, matrix.column);
+// Element-wise sine
+
+template <RealType N> Matrix<N> sin(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *out = result.data.data();
   const auto *a = matrix.data.data();
   const std::size_t n = matrix.data.size();
 
+  using std::sin;
   for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::sin(a[i]);
-  }
-  return result;
-};
-// cosine
-template <RealType N> inline Matrix<N> cos(const Matrix<N> &matrix) {
-
-  Matrix<N> result(matrix.row, matrix.column);
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::cos(a[i]);
-  }
-  return result;
-};
-
-// tangent
-template <RealType N> inline Matrix<N> tan(const Matrix<N> &matrix) {
-
-  Matrix<N> result(matrix.row, matrix.column);
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::tan(a[i]);
+    out[i] = sin(a[i]);
   }
   return result;
 }
 
-// square root
-template <RealType N> inline Matrix<N> sqrt(const Matrix<N> &matrix) {
+// Element-wise cosine
 
-  Matrix<N> result(matrix.row, matrix.column);
+template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *out = result.data.data();
   const auto *a = matrix.data.data();
   const std::size_t n = matrix.data.size();
 
+  using std::cos;
   for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::sqrt(a[i]);
+    out[i] = cos(a[i]);
   }
   return result;
 }
 
-// logarithm
-template <RealType N> inline Matrix<N> log(const Matrix<N> &matrix) {
+// Element-wise tangent
 
-  Matrix<N> result(matrix.row, matrix.column);
+template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *out = result.data.data();
   const auto *a = matrix.data.data();
   const std::size_t n = matrix.data.size();
 
+  using std::cos;
+  using std::tan;
+  constexpr N eps = N(1e-12);
   for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::log(a[i]);
+    if (std::abs(cos(a[i])) < eps) {
+      throw std::domain_error("tan undefined for element " +
+                              std::to_string(a[i]));
+    }
+    out[i] = tan(a[i]);
   }
-
   return result;
 }
-// exponent
-template <RealType N> inline Matrix<N> exp(const Matrix<N> &matrix) {
 
-  Matrix<N> result(matrix.row, matrix.column);
+// Element-wise square root
+
+template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *out = result.data.data();
   const auto *a = matrix.data.data();
   const std::size_t n = matrix.data.size();
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = std::exp(a[i]);
-  }
 
+  using std::sqrt;
+  for (std::size_t i = 0; i < n; ++i) {
+    if (a[i] < N{0}) {
+      throw std::domain_error("sqrt undefined for element " +
+                              std::to_string(a[i]));
+    }
+    out[i] = sqrt(a[i]);
+  }
+  return result;
+}
+
+// Element-wise natural logarithm
+
+template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  using std::log;
+  for (std::size_t i = 0; i < n; ++i) {
+    if (a[i] <= N{0}) {
+      throw std::domain_error("log undefined for element " +
+                              std::to_string(a[i]));
+    }
+    out[i] = log(a[i]);
+  }
+  return result;
+}
+
+// Element-wise exponential
+
+template <RealType N> Matrix<N> exp(const Matrix<N> &matrix) {
+  Matrix<N> result(matrix.nrows(), matrix.ncols());
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  using std::exp;
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = exp(a[i]);
+  }
   return result;
 }
 
