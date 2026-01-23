@@ -603,34 +603,10 @@ public:
   template <RealType N> friend inline Matrix<N> exp(const Matrix<N> &matrix);
 
   // power
-  template <typename U = M, std::enable_if_t<std::is_integral_v<U>, int> = 0>
-  Matrix<int> pow(unsigned int exponent) const {
-    Matrix<int> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = integer_pow(a[i], exponent);
-    }
-
-    return result;
-  }
-
-  template <typename U = M,
-            std::enable_if_t<std::is_floating_point_v<U>, int> = 0>
-  Matrix<double> pow(double exponent) const {
-    Matrix<double> result(row, column);
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const std::size_t n = data.size();
-
-    for (std::size_t i = 0; i < n; ++i) {
-      out[i] = std::pow(static_cast<double>(a[i]), exponent);
-    }
-
-    return result;
-  }
+  template <RealType U>
+  friend Matrix<U> pow(const Matrix<U> &matrix, U exponent);
+  template <IntegralType U>
+  friend Matrix<U> pow(const Matrix<U> &, int exponent);
 
   //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
 
@@ -1166,22 +1142,6 @@ private:
     }
     return x;
   }
-
-  // integer power
-  static constexpr int integer_pow(int base, unsigned int exp) noexcept {
-    int result = 1;
-
-    while (exp > 0) {
-      if (exp & 1) {
-        result *= base;
-      }
-      exp >>= 1;
-      if (exp) {
-        base *= base;
-      }
-    }
-    return result;
-  }
 };
 
 template <NumericType T> class Vector3D {
@@ -1618,6 +1578,55 @@ template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
   N *out = result.data.data();
   for (std::size_t i = 0; i < n; ++i)
     out[i] = std::exp(in[i]);
+  return result;
+}
+
+// integer power
+template <IntegralType I>
+constexpr I integer_pow(I base, unsigned int exp) noexcept {
+  I result = 1;
+  while (exp > 0) {
+    if (exp & 1)
+      result *= base;
+    exp >>= 1;
+    if (exp)
+      base *= base;
+  }
+  return result;
+}
+
+// Element Power IntegralType
+template <IntegralType U> Matrix<U> pow(const Matrix<U> &matrix, int exponent) {
+  if (exponent < 0) {
+    throw std::invalid_argument("Negative exponent not supported");
+  }
+  if (exponent == 0) {
+    Matrix<U> result(matrix.nrows(), matrix.ncols());
+    std::fill(result.data.begin(), result.data.end(), U{1});
+    return result;
+  }
+  Matrix<U> result(matrix.nrows(), matrix.ncols());
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = integer_pow(a[i], static_cast<unsigned int>(exponent));
+  }
+  return result;
+}
+
+// Element Power RealType
+template <RealType U> Matrix<U> pow(const Matrix<U> &matrix, U exponent) {
+  Matrix<U> result(matrix.nrows(), matrix.ncols());
+  auto *out = result.data.data();
+  const auto *a = matrix.data.data();
+  const std::size_t n = matrix.data.size();
+
+  using std::pow;
+  for (std::size_t i = 0; i < n; ++i) {
+    out[i] = pow(a[i], exponent);
+  }
   return result;
 }
 
