@@ -584,16 +584,22 @@ public:
 
   // Mathematical functions
 
+  // Element-wise sine
   template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
+  // Element-wise cosine
   template <RealType N> friend Matrix<N> cos(const Matrix<N> &);
+  // Element-wise tangent
   template <RealType N> friend Matrix<N> tan(const Matrix<N> &);
+  // Element-wise square root
   template <RealType N> friend Matrix<N> sqrt(const Matrix<N> &);
+  // Element-wise natural logarithm
   template <RealType N> friend Matrix<N> log(const Matrix<N> &);
+  // Element-wise exponential
   template <RealType N> friend Matrix<N> exp(const Matrix<N> &);
-
-  // power
+  // Element-wise Real power
   template <RealType U>
   friend Matrix<U> pow(const Matrix<U> &matrix, U exponent);
+  // Element-wise  Integral power
   template <IntegralType U>
   friend Matrix<U> pow(const Matrix<U> &, int exponent);
 
@@ -1250,6 +1256,35 @@ public:
     }
     return data[index];
   };
+
+  template <RealType N>
+  static bool floating_point_equality(N a, N b, N abs_eps = N{1e-12},
+                                      N rel_eps = N{1e-8}) noexcept {
+    return std::fabs(a - b) <=
+           abs_eps + rel_eps * std::max(std::fabs(a), std::fabs(b));
+  }
+
+  // equality
+  bool operator==(const Vector<V> &other) const noexcept {
+    if (data.size() != other.size())
+      return false;
+
+    if constexpr (IntegralType<V>) {
+      for (std::size_t i = 0; i < data.size(); ++i)
+        if (data[i] != other.data[i])
+          return false;
+    } else if constexpr (RealType<V>) {
+      for (std::size_t i = 0; i < data.size(); ++i)
+        if (!floating_point_equality(data[i], other.data[i]))
+          return false;
+    }
+
+    return true;
+  }
+  // inequality
+  bool operator!=(const Vector<V> &other) const noexcept {
+    return !(*this == other);
+  }
 
   V &operator()(std::size_t index);
 
