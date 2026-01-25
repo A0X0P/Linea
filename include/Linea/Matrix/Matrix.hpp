@@ -2,42 +2,26 @@
 // date : December 18th 2025
 // time : 20:20
 
-#ifndef MATRIX_H
-#define MATRIX_H
+#ifndef LINEA_MATRIX_H
+#define LINEA_MATRIX_H
 
+#include "../Core/Concepts.hpp"
+#include "../Core/Types.hpp"
+#include "../Core/Utilities.hpp"
+#include "../Vector/Vector.hpp"
 #include <algorithm>
-#include <array>
-#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
-#include <iomanip>
 #include <iostream>
+#include <limits>
+#include <numeric>
 #include <random>
 #include <stdexcept>
-#include <type_traits>
 #include <vector>
 
 namespace Linea {
 
-template <typename T>
-concept RealType = std::is_same_v<T, double> || std::is_same_v<T, long double>;
-
-template <typename T>
-concept IntegralType =
-    std::is_integral_v<T> && !std::is_same_v<T, bool> &&
-    !std::is_same_v<T, char> && !std::is_same_v<T, signed char> &&
-    !std::is_same_v<T, unsigned char> && !std::is_same_v<T, wchar_t> &&
-    !std::is_same_v<T, char8_t> && !std::is_same_v<T, char16_t> &&
-    !std::is_same_v<T, char32_t> && (sizeof(T) >= sizeof(int));
-
-template <typename T>
-concept NumericType = IntegralType<T> || RealType<T>;
-
-template <NumericType T, NumericType S>
-using Numeric = std::common_type_t<T, S>;
-
-template <NumericType V> class Vector;
 template <NumericType M> struct LUResult {
   Vector<M> permutation_vector;
   std::size_t rank;
@@ -45,10 +29,6 @@ template <NumericType M> struct LUResult {
 };
 
 template <NumericType M> class LUFactor;
-
-enum class NormType { Frobenius, One, Infinity, Spectral };
-
-enum class Diagonal { Major, Minor };
 
 template <NumericType M> class Matrix {
 
@@ -62,9 +42,8 @@ private:
 
 public:
   template <NumericType U> friend class Matrix;
-  // Constructors:
 
-  // Matrix() = default;
+  // Constructors
 
   // shape-only initialization
   Matrix(std::size_t row, std::size_t column)
@@ -98,21 +77,12 @@ public:
     }
   }
 
-  // Destructor:
-
+  // Destructor
   ~Matrix() {}
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Getters:
-
-  // Dimension
-
+  // Getters
   std::size_t nrows() const { return row; }
-
   std::size_t ncols() const { return column; }
-
-  // Element extraction
 
   Vector<M> getRow(std::size_t row_index) const {
     if (row_index >= row) {
@@ -140,15 +110,8 @@ public:
 
   const std::vector<M> &getdata() const & { return data; }
 
-  // Display
   int getDisplayWidth() const { return width; }
   int getDisplayPrecision() const { return precision; }
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Setters:
-
-  // Dimension
 
   void setRow(std::size_t row_index, const Vector<M> &other) {
     if (row_index >= row) {
@@ -176,15 +139,10 @@ public:
     }
   }
 
-  // Display convenience method
   void setDisplayWidth(int w) { width = std::max(0, w); }
-
   void setDisplayPrecision(int p) { precision = std::max(0, p); }
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
   // Permutation operations
-
   void swap_row(std::size_t row1, std::size_t row2) {
     if (row1 >= row || row2 >= row) {
       throw std::out_of_range("Row index out of range");
@@ -211,11 +169,7 @@ public:
     }
   }
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Concatenation:
-
-  // vertical [A | B]
+  // Concatenation
   Matrix<M> vstack(const Matrix<M> &other) const {
     if (column != other.column) {
       throw std::invalid_argument("vstack requires A.columns == B.columns");
@@ -234,7 +188,6 @@ public:
     return result;
   }
 
-  // Horizontal concatenation [A ⎯⎯ B]
   Matrix<M> hstack(const Matrix<M> &other) const {
     if (row != other.row) {
       throw std::invalid_argument("hstack requires A.rows == B.rows");
@@ -253,11 +206,7 @@ public:
     return result;
   }
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Static Methods:
-
-  // Identity
+  // Static Methods
   static Matrix<M> Identity(std::size_t row_column) {
     Matrix<M> I(row_column, row_column);
 
@@ -268,17 +217,14 @@ public:
     return I;
   }
 
-  // zeros
   static Matrix<M> Zeros(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{0});
   }
 
-  // ones
   static Matrix<M> Ones(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{1});
   }
 
-  // random matrix initialization
   static Matrix<M> rand_fill(std::size_t row, std::size_t column, M min_range,
                              M max_range) {
     auto low = std::min(min_range, max_range);
@@ -308,302 +254,36 @@ public:
     return result;
   }
 
-public:
-  // Methods
+  // Operators - declarations (implementations in MatrixOperations.hpp)
+  bool operator==(const Matrix<M> &other) const noexcept;
+  bool operator!=(const Matrix<M> &other) const noexcept;
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Operations:
-
-  template <RealType N>
-  static bool floating_point_equality(N a, N b, N abs_eps = N{1e-12},
-                                      N rel_eps = N{1e-8}) noexcept {
-    return std::fabs(a - b) <=
-           abs_eps + rel_eps * std::max(std::fabs(a), std::fabs(b));
-  }
-
-  // equality
-  bool operator==(const Matrix<M> &other) const noexcept {
-    if (row != other.row || column != other.column)
-      return false;
-
-    if constexpr (IntegralType<M>) {
-      for (std::size_t i = 0; i < data.size(); ++i)
-        if (data[i] != other.data[i])
-          return false;
-    } else if constexpr (RealType<M>) {
-      for (std::size_t i = 0; i < data.size(); ++i)
-        if (!floating_point_equality(data[i], other.data[i]))
-          return false;
-    }
-
-    return true;
-  }
-  // inequality
-  bool operator!=(const Matrix<M> &other) const noexcept {
-    return !(*this == other);
-  }
-
-  // addition (element wise, same type)
-  Matrix<M> operator+(const Matrix<M> &other) const {
-
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix addition requires identical dimensions.");
-    }
-    Matrix<M> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] + in[i];
-    }
-    return result;
-  }
-
-  // addition (element wise, different type)
-
+  Matrix<M> operator+(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<M, T>> operator+(const Matrix<T> &other) const {
+  Matrix<Numeric<M, T>> operator+(const Matrix<T> &other) const;
 
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix addition requires identical dimensions.");
-    }
-    Matrix<Numeric<M, T>> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] + in[i];
-    }
-    return result;
-  }
-
-  // subtraction (element wise, same type)
-  Matrix<M> operator-(const Matrix<M> &other) const {
-
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix subtraction requires identical dimensions.");
-    }
-    Matrix<M> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] - in[i];
-    }
-    return result;
-  }
-
-  // subtraction (element wise, different type)
+  Matrix<M> operator-(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<M, T>> operator-(const Matrix<T> &other) const {
+  Matrix<Numeric<M, T>> operator-(const Matrix<T> &other) const;
 
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix subtraction requires identical dimensions.");
-    }
-    Matrix<Numeric<M, T>> result(this->row, this->column);
+  Matrix<M> operator-() const;
 
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] - in[i];
-    }
-    return result;
-  }
+  template <NumericType S> Matrix<Numeric<M, S>> operator*(S scalar) const;
 
-  // unary minus
-  Matrix<M> operator-() const {
-    Matrix<M> result(row, column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = -a[i];
-    }
-    return result;
-  }
-
-  // right scalar multiplication (same-type  and Mixed-type closure)
-  template <NumericType S> Matrix<Numeric<M, S>> operator*(S scalar) const {
-    Matrix<Numeric<M, S>> result(row, column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] * scalar;
-    }
-    return result;
-  }
-
-  // matrix multiplication (same type)
-  Matrix<M> operator*(const Matrix<M> &other) const {
-    if (this->column != other.row) {
-      throw std::invalid_argument("A.column must equal B.row");
-    }
-
-    Matrix<M> result(row, other.column);
-    M sum{};
-    for (std::size_t i = 0; i < row; ++i) {
-      for (std::size_t k = 0; k < other.row; ++k) {
-        sum = (*this)(i, k);
-        for (std::size_t j = 0; j < other.column; ++j) {
-          result(i, j) += sum * other(k, j);
-        }
-      }
-    }
-    return result;
-  }
-
-  // matrix multiplication (different type)
+  Matrix<M> operator*(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<M, T>> operator*(const Matrix<T> &other) const {
-    if (this->column != other.row) {
-      throw std::invalid_argument("A.column must equal B.row");
-    }
+  Matrix<Numeric<M, T>> operator*(const Matrix<T> &other) const;
 
-    Matrix<Numeric<M, T>> result(row, other.column);
-    Numeric<M, T> sum{};
-    for (std::size_t i = 0; i < row; ++i) {
-      for (std::size_t k = 0; k < other.row; ++k) {
-        sum = (*this)(i, k);
-        for (std::size_t j = 0; j < other.column; ++j) {
-          result(i, j) += sum * other(k, j);
-        }
-      }
-    }
-    return result;
-  }
-
-  // Hadamard product (same type)
-  Matrix<M> Hadamard_product(const Matrix<M> &other) const {
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Hadamard product requires identical dimensions.");
-    }
-    Matrix<M> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] * in[i];
-    }
-    return result;
-  }
-
-  // Hadamard product (different type)
+  Matrix<M> Hadamard_product(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<T, M>> Hadamard_product(const Matrix<T> &other) const {
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Hadamard product requires identical dimensions.");
-    }
-    Matrix<Numeric<T, M>> result(this->row, this->column);
+  Matrix<Numeric<T, M>> Hadamard_product(const Matrix<T> &other) const;
 
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      out[i] = a[i] * in[i];
-    }
-    return result;
-  }
-
-  // division (element wise, same type)
-  Matrix<M> operator/(const Matrix<M> &other) const {
-
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix division requires identical dimensions.");
-    }
-    Matrix<M> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      if (in[i] == M{0}) {
-        throw std::domain_error("Division by zero.");
-      }
-      out[i] = a[i] / in[i];
-    }
-    return result;
-  }
-
-  // division (element wise, different type)
+  Matrix<M> operator/(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<T, M>> operator/(const Matrix<T> &other) const {
+  Matrix<Numeric<T, M>> operator/(const Matrix<T> &other) const;
 
-    if ((this->row != other.row) || (this->column != other.column)) {
-      throw std::invalid_argument(
-          "Matrix division requires identical dimensions.");
-    }
-    Matrix<Numeric<T, M>> result(this->row, this->column);
-
-    auto *out = result.data.data();
-    const auto *a = data.data();
-    const auto *in = other.data.data();
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      if (in[i] == T{0}) {
-        throw std::domain_error("Division by zero.");
-      }
-      out[i] = a[i] / in[i];
-    }
-    return result;
-  }
-
-  // index
-  M &operator()(std::size_t i, std::size_t j) {
-    if (i >= row || j >= column) {
-      throw std::out_of_range("Matrix index is out of range.");
-    }
-    return data[i * column + j];
-  }
-
-  const M &operator()(std::size_t i, std::size_t j) const {
-    if (i >= row || j >= column)
-      throw std::out_of_range("Matrix index out of range");
-    return data[i * column + j];
-  }
-
-  // output stream
-  template <NumericType V>
-  friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Mathematical functions
-
-  // Element-wise sine
-  template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
-  // Element-wise cosine
-  template <RealType N> friend Matrix<N> cos(const Matrix<N> &);
-  // Element-wise tangent
-  template <RealType N> friend Matrix<N> tan(const Matrix<N> &);
-  // Element-wise square root
-  template <RealType N> friend Matrix<N> sqrt(const Matrix<N> &);
-  // Element-wise natural logarithm
-  template <RealType N> friend Matrix<N> log(const Matrix<N> &);
-  // Element-wise exponential
-  template <RealType N> friend Matrix<N> exp(const Matrix<N> &);
-  // Element-wise Real power
-  template <RealType U>
-  friend Matrix<U> pow(const Matrix<U> &matrix, U exponent);
-  // Element-wise  Integral power
-  template <IntegralType U>
-  friend Matrix<U> pow(const Matrix<U> &, int exponent);
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
+  M &operator()(std::size_t i, std::size_t j);
+  const M &operator()(std::size_t i, std::size_t j) const;
 
   // Iterators
   using iterator = typename std::vector<M>::iterator;
@@ -612,7 +292,6 @@ public:
   using const_reverse_iterator =
       typename std::vector<M>::const_reverse_iterator;
 
-  // begin
   iterator begin() { return data.begin(); }
   reverse_iterator rbegin() { return data.rbegin(); }
   const_iterator begin() const { return data.begin(); }
@@ -620,7 +299,6 @@ public:
   const_iterator cbegin() const { return data.cbegin(); }
   const_reverse_iterator crbegin() const { return data.crbegin(); }
 
-  // end
   iterator end() { return data.end(); }
   reverse_iterator rend() { return data.rend(); }
   const_iterator end() const { return data.end(); }
@@ -628,10 +306,7 @@ public:
   const_iterator cend() const { return data.cend(); }
   const_reverse_iterator crend() const { return data.crend(); }
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
   // Statistical Operations
-
   template <IntegralType I = M> std::common_type_t<I, long long> sum() const {
     return std::accumulate(data.begin(), data.end(),
                            std::common_type_t<I, long long>{0});
@@ -653,6 +328,13 @@ public:
     return sum() / static_cast<R>(data.size());
   }
 
+  M min() const {
+    if (data.empty()) {
+      throw std::runtime_error("Cannot compute maximum of empty matrix");
+    }
+    return *std::min_element(data.begin(), data.end());
+  }
+
   M max() const {
     if (data.empty()) {
       throw std::runtime_error("Cannot compute maximum of empty matrix");
@@ -660,1231 +342,66 @@ public:
     return *std::max_element(data.begin(), data.end());
   }
 
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>//
-
-  // Special utility methods:
-
-  // display
-  void display(int width = 2, int precision = 2) {
-    setDisplayWidth(width);
-    setDisplayPrecision(precision);
-    std::cout << *this;
-  }
-
-  // insert
-  void insert(std::size_t row_index, std::size_t col_index, M number) {
-    if ((row_index >= row) || (col_index >= column)) {
-      throw std::out_of_range("Matrix index out of bounds: (" +
-                              std::to_string(row_index) + ", " +
-                              std::to_string(col_index) + ")");
-    }
-    data[row_index * column + col_index] = number;
-  }
-
-  // shape
-  void shape() const {
-    std::cout << "(" << row << ", " << column << ")" << std::endl;
-  }
-
-  // size
-  std::size_t size() const { return row * column; }
-
-  // empty
-  bool empty() const noexcept { return this->data.empty(); }
-
-  // symmetric
-  bool symmetric() const noexcept {
-    if (row != column)
-      return false;
-
-    const auto *a = data.data();
-    const std::size_t n = row;
-
-    for (std::size_t i = 0; i < n; ++i) {
-      const auto *row_i = a + i * n;
-      for (std::size_t j = i + 1; j < n; ++j) {
-        if (row_i[j] != a[j * n + i]) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  // square
-  bool square() const noexcept { return this->row == this->column; }
-
-  // singular
-  bool singular() const noexcept { return Rank() < row; }
-
-  // Trace
-  M trace() const {
-    if (row != column) {
-      throw std::invalid_argument("Matrix trace requires row == column.");
-    }
-
-    const std::size_t n = row;
-    const auto *base = data.data();
-    M trace_value = M{0};
-
-    for (std::size_t i = 0; i < n; ++i) {
-      trace_value += base[i * n + i];
-    }
-
-    return trace_value;
-  }
-
-  // diagonal
-  Vector<M> diagonal(Diagonal type = Diagonal::Major) const {
-
-    if (row != column) {
-      throw std::invalid_argument("Matrix diagonal requires row == column.");
-    }
-
-    const std::size_t n = row;
-    const auto *base = data.data();
-
-    Vector<M> _diagonal(n);
-
-    const auto *p = (type == Diagonal::Major) ? base : base + (n - 1);
-
-    const std::size_t stride = (type == Diagonal::Major) ? (n + 1) : (n - 1);
-
-    for (std::size_t i = 0; i < n; ++i, p += stride) {
-      _diagonal[i] = *p;
-    }
-
-    return _diagonal;
-  }
-
-  // transpose
-  Matrix<M> Transpose() const {
-    Matrix<M> result(this->column, this->row);
-
-    for (std::size_t i = 0; i < this->row; ++i) {
-      for (std::size_t j = 0; j < this->column; ++j) {
-        result.data[j * this->row + i] = data[i * this->column + j];
-      }
-    }
-
-    return result;
-  }
-
-  // Rank
-  std::size_t Rank() const { return lu_decompose().get_rank(); }
-
-  // Reshape
-  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const {
-
-    const std::size_t reshape_size = nrow * ncol;
-
-    if (reshape_size != data.size()) {
-      throw std::invalid_argument(
-          "No possible reshape exist for this combination.");
-    }
-    Matrix<M> result(nrow, ncol);
-    auto *out = result.data.data();
-    auto *in = data.data();
-    for (std::size_t i = 0; i < reshape_size; ++i) {
-      out[i] = in[i];
-    }
-    return result;
-  }
-
-  // flatten (row flatten)
-  Matrix<M> flatten() const {
-    Matrix<M> result(1, data.size());
-    std::copy(data.begin(), data.end(), result.data.begin());
-    return result;
-  }
-
-  // submatrix
-  Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const {
-
-    if (row_idx >= row || col_idx >= column) {
-      throw std::out_of_range("Matrix index is out of range.");
-    }
-
-    Matrix<M> sub_matrix(row - 1, column - 1);
-
-    const M *a = data.data();
-    M *out = sub_matrix.data.data();
-
-    for (std::size_t i = 0; i < row; ++i) {
-      if (i == row_idx)
-        continue;
-
-      const M *row_ptr = a + i * column;
-
-      for (std::size_t j = 0; j < column; ++j) {
-        if (j == col_idx)
-          continue;
-        *out++ = row_ptr[j];
-      }
-    }
-
-    return sub_matrix;
-  }
-
-  // minor
-  M minor(std::size_t row_idx, std::size_t col_idx) const {
-
-    if (row != column) {
-      throw std::invalid_argument("minor requires a square matrix.");
-    }
-    return subMatrix(row_idx, col_idx).determinant();
-  }
-
-  // cofactor
-  M cofactor(std::size_t row_index, std::size_t column_index) const {
-    M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
-    return sign * minor(row_index, column_index);
-  }
-
-  // cofactor matrix
-  Matrix<M> cofactor_matrix() const {
-    if (row != column) {
-      throw std::invalid_argument("Cofactor matrix requires a square matrix.");
-    }
-    Matrix<M> result(row, column);
-    for (std::size_t i = 0; i < row; ++i) {
-      for (std::size_t j = 0; j < column; ++j) {
-        result(i, j) = cofactor(i, j);
-      }
-    }
-    return result;
-  }
-
-  // adjoint
-  Matrix<M> adjoint() const { return cofactor_matrix().Transpose(); }
-
-  // determinant
-  M determinant() const {
-    if (row != column) {
-      throw std::invalid_argument("Matrix determinant requires row == column.");
-    }
-
-    LUFactor<M> result = lu_decompose();
-    Matrix<M> U_matrix = result.extract_U();
-
-    if (result.get_rank() < U_matrix.nrows()) {
-      return M{0};
-    }
-
-    M major_diagonal = M{1};
-    for (std::size_t i{}; i < U_matrix.nrows(); i++) {
-      major_diagonal *= U_matrix(i, i);
-    }
-    bool even_swaps = (result.get_swap_count() % 2 == 0);
-    return even_swaps ? major_diagonal : -major_diagonal;
-  }
-
-  // inverse
-  Matrix<M> Inverse() const {
-
-    LUFactor<M> lu_result = lu_decompose();
-    Matrix<M> L = lu_result.extract_L();
-    Matrix<M> U = lu_result.extract_U();
-    Vector<M> piv = lu_result.get_permutation_vector();
-    std::size_t n = this->row;
-
-    if (lu_result.get_rank() < n) {
-      throw std::runtime_error("Matrix is singular; cannot compute inverse");
-    }
-
-    Matrix<M> inverse_matrix(n, n);
-
-    for (std::size_t i = 0; i < n; i++) {
-
-      Vector<M> e_i(n, M{});
-      e_i[i] = M{1};
-
-      Vector<M> y = forward_substitution(L, e_i, piv);
-
-      Vector<M> x = backward_substitution(U, y);
-
-      for (std::size_t j = 0; j < n; j++) {
-        inverse_matrix(j, i) = x[j];
-      }
-    }
-    return inverse_matrix;
-  }
-
-  // linear system solver
-  Vector<M> solve(const Vector<M> &b) const {
-
-    LUFactor<M> lu_result = lu_decompose();
-    Matrix<M> L = lu_result.extract_L();
-    Matrix<M> U = lu_result.extract_U();
-    Vector<M> piv = lu_result.get_permutation_vector();
-
-    Vector<M> y = forward_substitution(L, b, piv);
-
-    Vector<M> x = backward_substitution(U, y);
-
-    return x;
-  }
-
-  Matrix<M> solve(const Matrix<M> &B) const {
-
-    LUFactor<M> lu_result = lu_decompose();
-    Matrix<M> L = lu_result.extract_L();
-    Matrix<M> U = lu_result.extract_U();
-    Vector<M> piv = lu_result.get_permutation_vector();
-
-    std::size_t n = this->row;
-    std::size_t m = B.column;
-
-    Matrix<M> X(n, m);
-
-    for (std::size_t i = 0; i < m; i++) {
-
-      Vector<M> b_i(n);
-      for (std::size_t j = 0; j < n; j++) {
-        b_i[j] = B(j, i);
-      }
-
-      Vector<M> y = forward_substitution(L, b_i, piv);
-      Vector<M> x = backward_substitution(U, y);
-
-      for (std::size_t j = 0; j < n; j++) {
-        X(j, i) = x[j];
-      }
-    }
-
-    return X;
-  }
-
-  // LU Decomposition with partial pivoting.
-  LUFactor<M> lu_decompose(M epsilon = M(0)) const {
-
-    const std::size_t m = row;
-    const std::size_t n = column;
-    const std::size_t k_max = std::min(m, n);
-
-    Matrix<M> LU = (*this);
-
-    LUResult<M> result{};
-    result.rank = 0;
-    result.swap_count = 0;
-    result.permutation_vector = Vector<M>(m);
-    for (std::size_t i{}; i < m; ++i) {
-      result.permutation_vector[i] = i;
-    }
-    Vector<M> row_index = result.permutation_vector;
-
-    // Compute adaptive epsilon if not provided by the user
-    M effective_epsilon = epsilon;
-    if (effective_epsilon == M(0)) {
-      M max_elem = M(0);
-      for (std::size_t i = 0; i < m; ++i) {
-        for (std::size_t j = 0; j < n; ++j) {
-          max_elem = std::max(max_elem, std::abs((*this)(i, j)));
-        }
-      }
-      effective_epsilon =
-          std::numeric_limits<M>::epsilon() * max_elem * std::max(m, n);
-    }
-
-    for (std::size_t k{}; k < k_max; ++k) {
-      // Pivot selection
-      std::size_t pivot = k;
-      M max_value = std::abs(LU(row_index[k], k));
-
-      for (std::size_t i = k + 1; i < m; ++i) {
-        M val = std::abs(LU(row_index[i], k));
-        if (val > max_value) {
-          max_value = val;
-          pivot = i;
-        }
-      }
-
-      if (max_value < effective_epsilon) {
-        continue;
-      }
-
-      if (pivot != k) {
-        std::swap(row_index[k], row_index[pivot]);
-        std::swap(result.permutation_vector[k],
-                  result.permutation_vector[pivot]);
-        ++result.swap_count;
-      }
-
-      const std::size_t physical_pivot_row = row_index[k];
-
-      // Elimination
-      for (std::size_t i = k + 1; i < m; ++i) {
-        const std::size_t physical_row = row_index[i];
-        LU(physical_row, k) /= LU(physical_pivot_row, k);
-
-        for (std::size_t j = k + 1; j < n; ++j) {
-          LU(physical_row, j) -=
-              LU(physical_row, k) * LU(physical_pivot_row, j);
-        }
-      }
-
-      ++result.rank;
-    }
-
-    // Physically permute LU to match permutation
-    Matrix<M> LU_perm(m, n);
-    for (std::size_t i{}; i < m; ++i) {
-      for (std::size_t j{}; j < n; ++j) {
-        LU_perm(i, j) = LU(row_index[i], j);
-      }
-    }
-
-    return LUFactor<M>(std::move(LU_perm), std::move(result));
-  }
-
+  // Utility methods - declarations (defined in MatrixUtilities.hpp)
+  void display(int width = 2, int precision = 2);
+  void insert(std::size_t row_index, std::size_t col_index, M number);
+  void shape() const;
+  std::size_t size() const;
+  bool empty() const noexcept;
+  bool symmetric() const noexcept;
+  bool square() const noexcept;
+  bool singular() const noexcept;
+
+  M trace() const;
+  Vector<M> diagonal(Diagonal type = Diagonal::Major) const;
+  Matrix<M> Transpose() const;
+  std::size_t Rank() const;
+  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
+  Matrix<M> flatten() const;
+  Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
+
+  M minor(std::size_t row_idx, std::size_t col_idx) const;
+  M cofactor(std::size_t row_index, std::size_t column_index) const;
+  Matrix<M> cofactor_matrix() const;
+  Matrix<M> adjoint() const;
+  M determinant() const;
+  Matrix<M> Inverse() const;
+
+  Vector<M> solve(const Vector<M> &b) const;
+  Matrix<M> solve(const Matrix<M> &B) const;
+
+  LUFactor<M> lu_decompose(M epsilon = M(0)) const;
   Matrix<M> cholesky() const;
+
   // Norms
-
-  double norm() const {
-    double sum = 0;
-
-    for (std::size_t i{}; i < this->row * this->column; i++) {
-      sum += this->data[i] * this->data[i];
-    }
-    return std::sqrt(sum);
-  }
-
-  double norm(NormType type) const {
-    switch (type) {
-    case NormType::Frobenius:
-      return norm();
-    case NormType::One:
-      return norm_1();
-    case NormType::Infinity:
-      return norm_infinity();
-    case NormType::Spectral:
-      return norm_spectral();
-    default:
-      return norm();
-    }
-  }
+  double norm() const;
+  double norm(NormType type) const;
 
 private:
-  // Norm implementation
-
-  double norm_1() const {
-    double max_sum = 0;
-    for (std::size_t j{}; j < this->column; j++) {
-      double sum = 0;
-      for (std::size_t i{}; i < this->row; i++) {
-        sum += std::abs((*this)(i, j));
-      }
-      if (sum > max_sum) {
-        max_sum = sum;
-      }
-    }
-
-    return max_sum;
-  };
-  double norm_infinity() const {
-    double max_sum = 0;
-
-    for (std::size_t i{}; i < this->row; i++) {
-      double sum = 0;
-      for (std::size_t j{}; j < this->column; j++) {
-        sum += std::abs((*this)(i, j));
-      }
-      if (sum > max_sum) {
-        max_sum = sum;
-      }
-    }
-
-    return max_sum;
-  };
-  double norm_spectral() const {
-    // Spectral norm is the largest singular value
-    // For now, i will not compute it
-    return 0;
-  };
-
-  // forward and backward substitution utilities for triangular matrices
+  double norm_1() const;
+  double norm_infinity() const;
+  double norm_spectral() const;
 
   Vector<M> forward_substitution(const Matrix<M> &L, const Vector<M> &b,
-                                 const Vector<M> &piv) const {
-    std::size_t n = L.row;
-    Vector<M> y(n);
+                                 const Vector<M> &piv) const;
+  Vector<M> backward_substitution(const Matrix<M> &U, const Vector<M> &y) const;
 
-    for (std::size_t i = 0; i < n; ++i) {
-      M sum{};
+  // Friend declarations
+  template <NumericType V>
+  friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
 
-      for (std::size_t j = 0; j < i; ++j) {
-        sum += L(i, j) * y[j];
-      }
-
-      y[i] = (b[piv[i]] - sum) / L(i, i);
-    }
-    return y;
-  }
-
-  Vector<M> backward_substitution(const Matrix<M> &U,
-                                  const Vector<M> &y) const {
-    std::size_t n = U.row;
-    Vector<M> x(n);
-
-    for (std::size_t i = n; i-- > 0;) {
-      M sum{};
-
-      for (std::size_t j = i + 1; j < n; ++j) {
-        sum += U(i, j) * x[j];
-      }
-
-      x[i] = (y[i] - sum) / U(i, i);
-    }
-    return x;
-  }
+  template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> cos(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> tan(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> sqrt(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> log(const Matrix<N> &);
+  template <RealType N> friend Matrix<N> exp(const Matrix<N> &);
+  template <RealType U>
+  friend Matrix<U> pow(const Matrix<U> &matrix, U exponent);
+  template <IntegralType U>
+  friend Matrix<U> pow(const Matrix<U> &, int exponent);
 };
-
-template <NumericType T> class Vector3D {
-
-private:
-  std::array<T, 3> data{};
-
-public:
-  // Constructors
-
-  // std::array initialization
-  constexpr explicit Vector3D(const std::array<T, 3> &arr) : data(arr) {}
-
-  // list initialization
-  constexpr Vector3D(T x, T y, T z) : data{x, y, z} {}
-
-  // Linea::Vector initialization
-  explicit Vector3D(const Vector<T> &v) {
-    if (v.size() != 3) {
-      throw std::invalid_argument("Vector3D requires size == 3");
-    }
-    std::copy(v.begin(), v.end(), data.begin());
-  }
-
-  // Element Access
-  constexpr T &operator[](std::size_t i) noexcept { return data[i]; }
-  constexpr const T &operator[](std::size_t i) const noexcept {
-    return data[i];
-  }
-
-  // Cross Product
-  constexpr Vector3D<T> cross(const Vector3D<T> &other) const {
-    return Vector3D<T>{data[1] * other[2] - data[2] * other[1],
-                       data[2] * other[0] - data[0] * other[2],
-                       data[0] * other[1] - data[1] * other[0]};
-  }
-
-  // Scalar Triple Product
-  // (a · (b × c))
-  constexpr T scalar_triple_product(const Vector3D &b,
-                                    const Vector3D &c) const {
-    const Vector3D result = b.cross(c);
-    return data[0] * result[0] + data[1] * result[1] + data[2] * result[2];
-  }
-
-  // Vector Triple Product
-  //(a × (b × c))
-  constexpr Vector3D vector_triple_product(const Vector3D &b,
-                                           const Vector3D &c) const {
-    return this->cross(b.cross(c));
-  }
-
-  // Raw Access
-  constexpr const std::array<T, 3> &getdata() const noexcept { return data; }
-};
-
-template <NumericType V> class Vector {
-
-private:
-  std::vector<V> data;
-
-public:
-  template <NumericType U> friend class Vector;
-
-  // Constructors
-
-  // size with fill value
-  Vector(std::size_t size, V value) : data(size, value) {};
-
-  // size-only (zero-initialized)
-  explicit Vector(std::size_t size) : data(size, V{0}) {};
-
-  // initializer-list construction
-  Vector(std::initializer_list<V> list) : data(list) {};
-
-  // std::vector copy construction
-  explicit Vector(const std::vector<V> &v) : data(v) {};
-  static Vector<V> rand_fill(std::size_t size, V min_range, V max_range) {
-    auto low = std::min(min_range, max_range);
-    auto high = std::max(min_range, max_range);
-
-    Vector<V> result(size);
-    static thread_local std::mt19937 engine(std::random_device{}());
-
-    if constexpr (std::is_integral_v<V>) {
-      std::uniform_int_distribution<V> distribute(low, high);
-      for (std::size_t i{}; i < size; ++i) {
-        result[i] = distribute(engine);
-      }
-
-    } else if constexpr (std::is_floating_point_v<V>) {
-      std::uniform_real_distribution<V> distribute(low, high);
-      for (std::size_t i{}; i < size; ++i) {
-        result[i] = distribute(engine);
-      }
-    }
-
-    return result;
-  }
-
-  // vector3D initialization
-  Vector(const Vector3D<V> &v) : data(v.getdata().begin(), v.getdata().end()) {}
-
-  std::size_t size() const noexcept { return data.size(); };
-
-  const std::vector<V> &data_ref() const & noexcept { return data; };
-
-  V &operator[](std::size_t index) {
-    if (index >= data.size()) {
-      throw std::invalid_argument("vector index out of range");
-    }
-    return data[index];
-  };
-  const V &operator[](std::size_t index) const {
-    if (index >= data.size()) {
-      throw std::invalid_argument("vector index out of range");
-    }
-    return data[index];
-  };
-
-  template <RealType N>
-  static bool floating_point_equality(N a, N b, N abs_eps = N{1e-12},
-                                      N rel_eps = N{1e-8}) noexcept {
-    return std::fabs(a - b) <=
-           abs_eps + rel_eps * std::max(std::fabs(a), std::fabs(b));
-  }
-
-  // equality
-  bool operator==(const Vector<V> &other) const noexcept {
-    if (data.size() != other.size())
-      return false;
-
-    if constexpr (IntegralType<V>) {
-      for (std::size_t i = 0; i < data.size(); ++i)
-        if (data[i] != other.data[i])
-          return false;
-    } else if constexpr (RealType<V>) {
-      for (std::size_t i = 0; i < data.size(); ++i)
-        if (!floating_point_equality(data[i], other.data[i]))
-          return false;
-    }
-
-    return true;
-  }
-  // inequality
-  bool operator!=(const Vector<V> &other) const noexcept {
-    return !(*this == other);
-  }
-
-  V &operator()(std::size_t index);
-
-  const V &operator()(std::size_t index) const;
-
-  Vector<V> operator+(const Vector<V> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument("element-wise addition requires same size");
-    }
-    const std::size_t n = data.size();
-    Vector<V> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] + other[i];
-    }
-    return result;
-  }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> operator+(const Vector<T> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument("element-wise addition requires same size");
-    }
-    const std::size_t n = data.size();
-    Vector<Numeric<T, V>> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] + other[i];
-    }
-    return result;
-  }
-
-  Vector<V> operator-(const Vector<V> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument(
-          "element-wise subtraction requires same size");
-    }
-    const std::size_t n = data.size();
-    Vector<V> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] - other[i];
-    }
-    return result;
-  }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> operator-(const Vector<T> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument(
-          "element-wise subtraction requires same size");
-    }
-    const std::size_t n = data.size();
-    Vector<Numeric<T, V>> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] - other[i];
-    }
-    return result;
-  }
-
-  Vector<V> hadamard(const Vector<V> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument("hadamard product requires same size");
-    }
-
-    const std::size_t n = data.size();
-    Vector<V> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] * other[i];
-    }
-    return result;
-  }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> hadamard(const Vector<T> &other) const {
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument("hadamard product requires same size");
-    }
-
-    const std::size_t n = data.size();
-    Vector<Numeric<T, V>> result(n);
-    for (std::size_t i = 0; i < n; ++i) {
-      result[i] = data[i] * other[i];
-    }
-    return result;
-  }
-
-  // right scalar multiplication (same-type  and Mixed-type closure)
-  template <NumericType S> Vector<Numeric<V, S>> operator*(S scalar) const {
-    Vector<Numeric<V, S>> result(data.size());
-    for (std::size_t i = 0; i < data.size(); ++i) {
-      result[i] = data[i] * scalar;
-    }
-    return result;
-  }
-
-  Matrix<V> outer(const Vector<V> &other) const {
-    const std::size_t rows = data.size();
-    const std::size_t cols = other.data.size();
-
-    Matrix<V> result(rows, cols);
-
-    const V *data_ptr = data.data();
-    const V *other_ptr = other.data.data();
-    V *result_ptr = result.data.data();
-
-    for (std::size_t i = 0; i < rows; ++i) {
-      const V data_ptr_idx = data_ptr[i];
-      V *row_ptr = result_ptr + i * cols;
-
-      for (std::size_t j = 0; j < cols; ++j) {
-        row_ptr[j] = data_ptr_idx * other_ptr[j];
-      }
-    }
-
-    return result;
-  }
-
-  Vector<V> operator*(V scalar) const;
-
-  V dot(const Vector<V> &other) const {
-
-    if (data.size() != other.data.size()) {
-      throw std::invalid_argument("dot product requires same size");
-    }
-
-    const std::size_t n = data.size();
-    V sum = V{0};
-    for (std::size_t i = 0; i < n; ++i) {
-      sum += data[i] * other[i];
-    }
-    return sum;
-  }
-
-  Vector<V> cross(const Vector<V> &other) const {
-
-    if ((data.size() != 3) || (other.data.size() != 3)) {
-      throw std::invalid_argument("cross product requires 3D-vectors.");
-    }
-
-    return Vector<V>{data[1] * other[2] - other[1] * data[2],
-                     -(data[0] * other[2] - other[0] * data[2]),
-                     data[0] * other[1] - other[0] * data[1]};
-  }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> cross(const Vector<T> &other) const {
-
-    if ((data.size() != 3) || (other.data.size() != 3)) {
-      throw std::invalid_argument("cross product requires 3D-vectors.");
-    }
-
-    return Vector<Numeric<T, V>>{data[1] * other[2] - other[1] * data[2],
-                                 -(data[0] * other[2] - other[0] * data[2]),
-                                 data[0] * other[1] - other[0] * data[1]};
-  }
-
-  V norm() const;
-
-  Matrix<V> reshape(std::size_t rows, std::size_t columns) const {
-    if (rows * columns != data.size()) {
-      throw std::invalid_argument(
-          "reshape dimensions do not match vector size");
-    }
-
-    Matrix<V> result(rows, columns);
-    std::copy(data.begin(), data.end(), result.begin());
-    return result;
-  };
-
-  // Mathematical functions
-
-  template <RealType N> friend inline Vector<N> sin(const Vector<N> &);
-  template <RealType N> friend inline Vector<N> cos(const Vector<N> &);
-  template <RealType N> friend inline Vector<N> tan(const Vector<N> &);
-  template <RealType N> friend inline Vector<N> sqrt(const Vector<N> &);
-  template <RealType N> friend inline Vector<N> log(const Vector<N> &);
-  template <RealType N> friend inline Vector<N> exp(const Vector<N> &);
-  /// Concatenation
-  Vector<V> join(const Vector<V> &other) const {
-    const std::size_t this_size = data.size();
-    const std::size_t other_size = other.data.size();
-    Vector<V> result(this_size + other_size);
-
-    std::copy(data.data(), data.data() + this_size, result.data.data());
-    std::copy(other.data.data(), other.data.data() + other_size,
-              result.data.data() + this_size);
-
-    return result;
-  }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> join(const Vector<T> &other) const {
-    const std::size_t this_size = data.size();
-    const std::size_t other_size = other.data.size();
-    Vector<Numeric<T, V>> result(this_size + other_size);
-
-    for (std::size_t i = 0; i < this_size; ++i) {
-      result[i] = data[i];
-    }
-
-    for (std::size_t i = 0; i < other_size; ++i) {
-      result[this_size + i] = other[i];
-    }
-
-    return result;
-  }
-  Vector<V> operator|(const Vector<V> &other) const { return join(other); }
-
-  template <NumericType T>
-  Vector<Numeric<T, V>> operator|(const Vector<T> &other) const {
-    return join(other);
-  }
-
-  // Iterators
-  using iterator = typename std::vector<V>::iterator;
-  using const_iterator = typename std::vector<V>::const_iterator;
-  using reverse_iterator = typename std::vector<V>::reverse_iterator;
-  using const_reverse_iterator =
-      typename std::vector<V>::const_reverse_iterator;
-
-  // begin
-  iterator begin() noexcept { return data.begin(); }
-  const_iterator begin() const noexcept { return data.begin(); }
-  const_iterator cbegin() const noexcept { return data.cbegin(); }
-
-  reverse_iterator rbegin() noexcept { return data.rbegin(); }
-  const_reverse_iterator rbegin() const noexcept { return data.rbegin(); }
-  const_reverse_iterator crbegin() const noexcept { return data.crbegin(); }
-
-  // end
-  iterator end() noexcept { return data.end(); }
-  const_iterator end() const noexcept { return data.end(); }
-  const_iterator cend() const noexcept { return data.cend(); }
-
-  reverse_iterator rend() noexcept { return data.rend(); }
-  const_reverse_iterator rend() const noexcept { return data.rend(); }
-  const_reverse_iterator crend() const noexcept { return data.crend(); }
-
-  template <NumericType Vv>
-  friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
-};
-
-/// Vector mathematical functions
-// sine
-template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  for (std::size_t i = 0; i < n; ++i)
-    out[i] = std::sin(in[i]);
-  return result;
-}
-
-// cosine
-template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  for (std::size_t i = 0; i < n; ++i)
-    out[i] = std::cos(in[i]);
-  return result;
-}
-
-// tangent
-template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  constexpr N eps = N(1e-12);
-  for (std::size_t i = 0; i < n; ++i) {
-    if (std::abs(std::cos(in[i])) < eps)
-      throw std::domain_error("tan undefined for element " +
-                              std::to_string(in[i]));
-    out[i] = std::tan(in[i]);
-  }
-  return result;
-}
-
-// square root
-template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  for (std::size_t i = 0; i < n; ++i) {
-    if (in[i] < N(0))
-      throw std::domain_error("sqrt undefined for element " +
-                              std::to_string(in[i]));
-    out[i] = std::sqrt(in[i]);
-  }
-  return result;
-}
-
-// logarithm
-template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  for (std::size_t i = 0; i < n; ++i) {
-    if (in[i] <= N(0))
-      throw std::domain_error("log undefined for element " +
-                              std::to_string(in[i]));
-    out[i] = std::log(in[i]);
-  }
-  return result;
-}
-
-// exponent
-template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
-  const std::size_t n = vec.data.size();
-  Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
-  for (std::size_t i = 0; i < n; ++i)
-    out[i] = std::exp(in[i]);
-  return result;
-}
-
-// integer power
-template <IntegralType I>
-constexpr I integer_pow(I base, unsigned int exp) noexcept {
-  I result = 1;
-  while (exp > 0) {
-    if (exp & 1)
-      result *= base;
-    exp >>= 1;
-    if (exp)
-      base *= base;
-  }
-  return result;
-}
-
-// Element Power IntegralType
-template <IntegralType U> Matrix<U> pow(const Matrix<U> &matrix, int exponent) {
-  if (exponent < 0) {
-    throw std::invalid_argument("Negative exponent not supported");
-  }
-  if (exponent == 0) {
-    Matrix<U> result(matrix.nrows(), matrix.ncols());
-    std::fill(result.data.begin(), result.data.end(), U{1});
-    return result;
-  }
-  Matrix<U> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = integer_pow(a[i], static_cast<unsigned int>(exponent));
-  }
-  return result;
-}
-
-// Element Power RealType
-template <RealType U> Matrix<U> pow(const Matrix<U> &matrix, U exponent) {
-  Matrix<U> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::pow;
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = pow(a[i], exponent);
-  }
-  return result;
-}
-
-// left vector scalar multiplication (same-type  and Mixed-type closure)
-template <NumericType S, NumericType V>
-Vector<Numeric<V, S>> operator*(S scalar, const Vector<V> &vector) {
-  return vector * scalar;
-}
-
-/// Matrix  mathematical functions
-
-// Element-wise sine
-
-template <RealType N> Matrix<N> sin(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::sin;
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = sin(a[i]);
-  }
-  return result;
-}
-
-// Element-wise cosine
-
-template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::cos;
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = cos(a[i]);
-  }
-  return result;
-}
-
-// Element-wise tangent
-
-template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::cos;
-  using std::tan;
-  constexpr N eps = N(1e-12);
-  for (std::size_t i = 0; i < n; ++i) {
-    if (std::abs(cos(a[i])) < eps) {
-      throw std::domain_error("tan undefined for element " +
-                              std::to_string(a[i]));
-    }
-    out[i] = tan(a[i]);
-  }
-  return result;
-}
-
-// Element-wise square root
-
-template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::sqrt;
-  for (std::size_t i = 0; i < n; ++i) {
-    if (a[i] < N{0}) {
-      throw std::domain_error("sqrt undefined for element " +
-                              std::to_string(a[i]));
-    }
-    out[i] = sqrt(a[i]);
-  }
-  return result;
-}
-
-// Element-wise natural logarithm
-
-template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::log;
-  for (std::size_t i = 0; i < n; ++i) {
-    if (a[i] <= N{0}) {
-      throw std::domain_error("log undefined for element " +
-                              std::to_string(a[i]));
-    }
-    out[i] = log(a[i]);
-  }
-  return result;
-}
-
-// Element-wise exponential
-
-template <RealType N> Matrix<N> exp(const Matrix<N> &matrix) {
-  Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
-  const std::size_t n = matrix.data.size();
-
-  using std::exp;
-  for (std::size_t i = 0; i < n; ++i) {
-    out[i] = exp(a[i]);
-  }
-  return result;
-}
-
-// left matrix scalar multiplication (same-type  and Mixed-type closure)
-template <NumericType S, NumericType M>
-Matrix<Numeric<M, S>> operator*(S scalar, const Matrix<M> &matrix) {
-  return matrix * scalar;
-}
-
-// LUFactor
-template <NumericType M> class LUFactor {
-
-private:
-  // --- attributes ---
-
-  Matrix<M> LU;
-  LUResult<M> info;
-
-public:
-  // ---- methods ----
-
-  // constructor
-  LUFactor(Matrix<M> lu, LUResult<M> result)
-      : LU(std::move(lu)), info(std::move(result)) {}
-
-  // getter
-
-  std::size_t get_rank() const { return info.rank; }
-
-  std::size_t get_swap_count() const { return info.swap_count; }
-
-  const Vector<M> &get_permutation_vector() const {
-    return info.permutation_vector;
-  }
-
-  const LUResult<M> &get_Info() const { return info; }
-
-  // Extract L as m × min(m,n) lower triangular matrix with unit diagonal from
-  // the LU matrix
-  Matrix<M> extract_L() const {
-
-    const std::size_t m = LU.nrows();
-    const std::size_t n = LU.ncols();
-    const std::size_t k_max = std::min(m, n);
-
-    Matrix<M> L(m, k_max, M{});
-
-    for (std::size_t i{}; i < m; i++) {
-
-      // unit diagonal
-      if (i < k_max) {
-        L(i, i) = M{1};
-      }
-
-      // subdiagonal entries
-      for (std::size_t j{}; j < std::min(i, k_max); j++) {
-        L(i, j) = LU(i, j);
-      }
-    }
-    return L;
-  }
-
-  // Extract U as min(m,n) × n upper triangular matrix from LU matrix
-  Matrix<M> extract_U() const {
-
-    const std::size_t m = LU.nrows();
-    const std::size_t n = LU.ncols();
-    const std::size_t k_max = std::min(m, n);
-
-    Matrix<M> U(k_max, n, M{});
-
-    for (std::size_t i{}; i < k_max; i++) {
-      for (std::size_t j = i; j < n; j++) {
-        U(i, j) = LU(i, j);
-      }
-    }
-    return U;
-  }
-
-  // Extract permutation matrix P (m × m) such that P*A = L*U
-  Matrix<M> extract_P() const {
-
-    const std::size_t m = LU.nrows();
-    Matrix<M> P(m, m, M{});
-
-    for (std::size_t i{}; i < m; i++) {
-      P(i, info.permutation_vector[i]) = M{1};
-    }
-    return P;
-  }
-};
-
-template <NumericType V>
-std::ostream &operator<<(std::ostream &os, const Matrix<V> &other) {
-
-  auto flags = os.flags();
-  auto prec = os.precision();
-
-  const std::size_t R = other.nrows();
-  const std::size_t C = other.ncols();
-  const int W = other.width;
-  const int P = other.precision;
-
-  os << std::fixed << std::setprecision(P);
-  for (std::size_t i{}; i < R; i++) {
-    os << std::right << std::showpoint << "[ ";
-    for (std::size_t j{}; j < C; j++) {
-      os << std::setw(W) << other.data[i * C + j];
-      if (j < C - 1) {
-        os << ", ";
-      }
-    }
-    os << " ]";
-    if (i < R - 1) {
-      os << "\n";
-    }
-  }
-
-  os.flags(flags);
-  os.precision(prec);
-  return os;
-}
 
 } // namespace Linea
-#endif
+
+#endif // LINEA_MATRIX_H
