@@ -43,8 +43,7 @@ public:
           if (val <= 0) {
             throw std::runtime_error("Matrix is not positive-definite.");
           }
-          using std::sqrt;
-          L(i, j) = sqrt(val);
+          L(i, j) = std::sqrt(val);
         } else {
           L(i, j) = (data(i, j) - sum) / L(j, j);
         }
