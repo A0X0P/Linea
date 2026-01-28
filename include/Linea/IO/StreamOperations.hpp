@@ -67,7 +67,8 @@ std::ostream &display(std::ostream &os, const Vector<F> &vector,
   }
 
   if (fmt.horizontal) {
-    os << "[";
+    os << std::setprecision(fmt.precision) << std::right << std::showpoint
+       << "[";
     for (std::size_t i = 0; i < vector.size(); ++i) {
       os << std::setw(fmt.width) << vector[i];
       if (i + 1 < vector.size()) {
@@ -76,6 +77,7 @@ std::ostream &display(std::ostream &os, const Vector<F> &vector,
     }
     os << "]\n";
   } else {
+    os << std::setprecision(fmt.precision) << std::right << std::showpoint;
     for (std::size_t i = 0; i < vector.size(); ++i) {
       os << std::setw(fmt.width) << vector[i] << '\n';
     }
