@@ -37,8 +37,6 @@ private:
   std::size_t row;
   std::size_t column;
   std::vector<M> data;
-  int width = 2;
-  int precision = 2;
 
 public:
   template <NumericType U> friend class Matrix;
@@ -110,9 +108,6 @@ public:
 
   const std::vector<M> &getdata() const & { return data; }
 
-  int getDisplayWidth() const { return width; }
-  int getDisplayPrecision() const { return precision; }
-
   void setRow(std::size_t row_index, const Vector<M> &other) {
     if (row_index >= row) {
       throw std::out_of_range("Row index out of range");
@@ -138,9 +133,6 @@ public:
       data[i * column + column_index] = other[i];
     }
   }
-
-  void setDisplayWidth(int w) { width = std::max(0, w); }
-  void setDisplayPrecision(int p) { precision = std::max(0, p); }
 
   // Permutation operations
   void swap_row(std::size_t row1, std::size_t row2) {
@@ -343,7 +335,6 @@ public:
   }
 
   // Utility methods - declarations (defined in MatrixUtilities.hpp)
-  void display(int width = 2, int precision = 2);
   void insert(std::size_t row_index, std::size_t col_index, M number);
   void shape() const;
   std::size_t size() const;
@@ -387,8 +378,6 @@ private:
   Vector<M> backward_substitution(const Matrix<M> &U, const Vector<M> &y) const;
 
   // Friend declarations
-  template <NumericType V>
-  friend std::ostream &operator<<(std::ostream &os, const Matrix<V> &other);
 
   template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
   template <RealType N> friend Matrix<N> cos(const Matrix<N> &);

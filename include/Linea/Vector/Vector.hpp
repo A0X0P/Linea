@@ -170,8 +170,6 @@ public:
   const_reverse_iterator crend() const noexcept { return data.crend(); }
 
   // Friends
-  template <NumericType Vv>
-  friend std::ostream &operator<<(std::ostream &os, const Vector<Vv> &vec);
 
   template <RealType N> friend Vector<N> sin(const Vector<N> &);
   template <RealType N> friend Vector<N> cos(const Vector<N> &);

@@ -11,13 +11,6 @@
 
 namespace Linea {
 
-// Display
-template <NumericType M> void Matrix<M>::display(int width, int precision) {
-  setDisplayWidth(width);
-  setDisplayPrecision(precision);
-  std::cout << *this;
-}
-
 // Insert
 template <NumericType M>
 void Matrix<M>::insert(std::size_t row_index, std::size_t col_index, M number) {
