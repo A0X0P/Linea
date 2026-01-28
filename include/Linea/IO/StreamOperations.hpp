@@ -2,6 +2,8 @@
 // date : January 28th 2026
 // time : 16:21
 
+#pragma once
+
 #include <iomanip>
 #include <ostream>
 
