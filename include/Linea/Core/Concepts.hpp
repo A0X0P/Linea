@@ -10,7 +10,7 @@
 namespace Linea {
 
 template <typename T>
-concept RealType = std::is_same_v<T, double> || std::is_same_v<T, long double>;
+concept RealType = std::is_floating_point_v<T>;
 
 template <typename T>
 concept IntegralType =
