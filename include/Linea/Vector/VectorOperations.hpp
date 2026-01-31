@@ -198,6 +198,20 @@ Vector<Numeric<T, V>> Vector<V>::join(const Vector<T> &other) const {
   return result;
 }
 
+// Extraction
+template <NumericType V>
+Vector<V> Vector<V>::segment(std::size_t start, std::size_t length) const {
+  if (start + length > size()) {
+    throw std::out_of_range("Vector::segment out of range");
+  }
+
+  Vector<V> result(length);
+  for (std::size_t i = 0; i < length; ++i) {
+    result[i] = (*this)[start + i];
+  }
+  return result;
+}
+
 } // namespace Linea
 
 #endif // LINEA_VECTOR_OPERATIONS_H

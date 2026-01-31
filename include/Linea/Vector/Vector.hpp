@@ -146,6 +146,9 @@ public:
     return join(other);
   }
 
+  // Extraction
+  Vector<V> segment(std::size_t start, std::size_t length) const;
+
   // Iterators
   using iterator = typename std::vector<V>::iterator;
   using const_iterator = typename std::vector<V>::const_iterator;
