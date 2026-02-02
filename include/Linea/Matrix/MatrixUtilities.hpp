@@ -12,7 +12,7 @@
 namespace Linea {
 
 // Insert
-template <NumericType M>
+/*template <NumericType M>
 void Matrix<M>::insert(std::size_t row_index, std::size_t col_index, M number) {
   if ((row_index >= row) || (col_index >= column)) {
     throw std::out_of_range("Matrix index out of bounds: (" +
@@ -21,7 +21,7 @@ void Matrix<M>::insert(std::size_t row_index, std::size_t col_index, M number) {
   }
   data[row_index * column + col_index] = number;
 }
-
+*/
 // Shape
 template <NumericType M> void Matrix<M>::shape() const {
   std::cout << "(" << row << ", " << column << ")" << std::endl;
@@ -174,6 +174,23 @@ Matrix<M> Matrix<M>::subMatrix(std::size_t row_idx, std::size_t col_idx) const {
   }
 
   return sub_matrix;
+}
+
+// Block
+template <NumericType M>
+Matrix<M> Matrix<M>::block(std::size_t row, std::size_t col, std::size_t nrows,
+                           std::size_t ncols) const {
+  if (row + nrows > this->nrows() || col + ncols > this->ncols()) {
+    throw std::out_of_range("Matrix::block out of range");
+  }
+
+  Matrix<M> result(nrows, ncols);
+  for (std::size_t i = 0; i < nrows; ++i) {
+    for (std::size_t j = 0; j < ncols; ++j) {
+      result(i, j) = (*this)(row + i, col + j);
+    }
+  }
+  return result;
 }
 
 // Minor

@@ -13,7 +13,6 @@
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
-#include <iostream>
 #include <limits>
 #include <numeric>
 #include <random>
@@ -350,6 +349,8 @@ public:
   Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
   Matrix<M> flatten() const;
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
+  Matrix<M> block(std::size_t row, std::size_t col, std::size_t nrows,
+                  std::size_t ncols) const;
 
   M minor(std::size_t row_idx, std::size_t col_idx) const;
   M cofactor(std::size_t row_index, std::size_t column_index) const;
