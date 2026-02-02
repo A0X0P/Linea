@@ -14,7 +14,10 @@ template <NumericType T, NumericType S>
 using Numeric = std::common_type_t<T, S>;
 
 enum class NormType { Frobenius, One, Infinity, Spectral };
+enum class MatrixNorm { Frobenius, One, Infinity, Spectral };
+enum class VectorNorm { L1, L2, LInf };
 enum class Diagonal { Major, Minor };
+enum class ComputeMode { Thin, Full };
 
 } // namespace Linea
 #endif // LINEA_TYPES_H
