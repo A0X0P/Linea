@@ -6,6 +6,7 @@
 #define LINEA_HOUSEHOLDER_QR_HPP
 
 #include "../Core/Concepts.hpp"
+#include "../Core/Types.hpp"
 #include "../Matrix/Matrix.hpp"
 #include "../Vector/Vector.hpp"
 #include <algorithm>
@@ -14,8 +15,6 @@
 #include <stdexcept>
 
 namespace Linea::Decompositions {
-
-enum class QRMode { Full, Thin };
 
 template <RealType T> class HouseholderQR {
 private:
@@ -37,8 +36,8 @@ public:
 
   // --- Accessors ---
 
-  Matrix<T> R(QRMode mode = QRMode::Thin) const {
-    std::size_t target_rows = (mode == QRMode::Full) ? m_ : rank_;
+  Matrix<T> R(ComputeMode mode = ComputeMode::Thin) const {
+    std::size_t target_rows = (mode == ComputeMode::Full) ? m_ : rank_;
 
     Matrix<T> Rmat(target_rows, n_);
     for (std::size_t i = 0; i < target_rows; ++i) {
@@ -51,8 +50,8 @@ public:
     return Rmat;
   }
 
-  Matrix<T> Q(QRMode mode = QRMode::Thin) const {
-    std::size_t target_cols = (mode == QRMode::Full) ? m_ : rank_;
+  Matrix<T> Q(ComputeMode mode = ComputeMode::Thin) const {
+    std::size_t target_cols = (mode == ComputeMode::Full) ? m_ : rank_;
 
     Matrix<T> Qmat(m_, target_cols);
     for (std::size_t i = 0; i < m_; ++i) {

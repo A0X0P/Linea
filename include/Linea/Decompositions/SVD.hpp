@@ -6,13 +6,12 @@
 #define LINEA_SVD_HPP
 
 #include "../Core/Concepts.hpp"
+#include "../Core/Types.hpp"
 #include "../Matrix/Matrix.hpp"
 #include "../Vector/Vector.hpp"
 #include <cmath>
 
 namespace Linea::Decompositions {
-
-enum class SVDMode { Full, Thin };
 
 template <RealType Tp> class SVD {
 private:
@@ -24,7 +23,7 @@ private:
   Vector<Tp> singular_values;
 
 public:
-  SVD(const Matrix<Tp> &matrix, SVDMode mode = SVDMode::Thin,
+  SVD(const Matrix<Tp> &matrix, ComputeMode mode = ComputeMode::Thin,
       Tp tolerance = 1e-6, std::size_t maxIters = 100)
       : row(matrix.nrows()), col(matrix.ncols()), tolerance_(tolerance),
         maxIterations_(maxIters), U_matrix(row, row), V_matrix(col, col),
@@ -40,7 +39,7 @@ public:
 private:
   //--- Golub–Kahan bidiagonal + QR iteration ---//
 
-  void compute(const Matrix<Tp> &matrix, SVDMode mode) {
+  void compute(const Matrix<Tp> &matrix, ComputeMode mode) {
     std::size_t kmax = std::min(row, col);
     Matrix<Tp> B = matrix;
 
