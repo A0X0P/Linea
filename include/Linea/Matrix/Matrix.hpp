@@ -276,6 +276,12 @@ public:
   M &operator()(std::size_t i, std::size_t j);
   const M &operator()(std::size_t i, std::size_t j) const;
 
+private:
+  [[nodiscard]] inline M *raw() noexcept { return data.data(); }
+
+  [[nodiscard]] inline const M *raw() const noexcept { return data.data(); }
+
+public:
   // Iterators
   using iterator = typename std::vector<M>::iterator;
   using reverse_iterator = typename std::vector<M>::reverse_iterator;
@@ -334,7 +340,6 @@ public:
   }
 
   // Utility methods - declarations (defined in MatrixUtilities.hpp)
-  void insert(std::size_t row_index, std::size_t col_index, M number);
   void shape() const;
   std::size_t size() const;
   bool empty() const noexcept;
@@ -349,8 +354,6 @@ public:
   Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
   Matrix<M> flatten() const;
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
-  Matrix<M> block(std::size_t row, std::size_t col, std::size_t nrows,
-                  std::size_t ncols) const;
 
   M minor(std::size_t row_idx, std::size_t col_idx) const;
   M cofactor(std::size_t row_index, std::size_t column_index) const;

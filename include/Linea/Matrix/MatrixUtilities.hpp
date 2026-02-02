@@ -11,17 +11,6 @@
 
 namespace Linea {
 
-// Insert
-/*template <NumericType M>
-void Matrix<M>::insert(std::size_t row_index, std::size_t col_index, M number) {
-  if ((row_index >= row) || (col_index >= column)) {
-    throw std::out_of_range("Matrix index out of bounds: (" +
-                            std::to_string(row_index) + ", " +
-                            std::to_string(col_index) + ")");
-  }
-  data[row_index * column + col_index] = number;
-}
-*/
 // Shape
 template <NumericType M> void Matrix<M>::shape() const {
   std::cout << "(" << row << ", " << column << ")" << std::endl;
