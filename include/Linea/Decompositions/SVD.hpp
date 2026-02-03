@@ -6,6 +6,7 @@
 #define LINEA_SVD_HPP
 
 #include "../Core/Concepts.hpp"
+#include "../Core/PlatformMacros.hpp"
 #include "../Core/Types.hpp"
 #include "../Matrix/Matrix.hpp"
 #include "../Vector/Vector.hpp"
@@ -37,138 +38,142 @@ public:
   const Vector<Tp> &singularValues() const noexcept { return singular_values; }
 
 private:
-  //--- Golub–Kahan bidiagonal + QR iteration ---//
+  void compute(const Matrix<Tp> &matrix, ComputeMode /*mode*/) {
+    const std::size_t kmax = std::min(row, col);
 
-  void compute(const Matrix<Tp> &matrix, ComputeMode mode) {
-    std::size_t kmax = std::min(row, col);
     Matrix<Tp> B = matrix;
 
     U_matrix = Matrix<Tp>::Identity(row);
     V_matrix = Matrix<Tp>::Identity(col);
     singular_values = Vector<Tp>(kmax);
 
-    // --- Bidiagonalization ---//
+    Tp *RESTRICT Bp = B.raw();
+    Tp *RESTRICT Up = U_matrix.raw();
+    Tp *RESTRICT Vp = V_matrix.raw();
+
+    // --- Bidiagonalization ---
     for (std::size_t k = 0; k < kmax; ++k) {
 
-      // Left Householder (column k)
+      // Left Householder
       Tp sigma = 0;
-      for (std::size_t i = k; i < row; ++i)
-        sigma += B(i, k) * B(i, k);
+      for (std::size_t i = k; i < row; ++i) {
+        Tp v = Bp[i * col + k];
+        sigma += v * v;
+      }
 
       if (sigma > tolerance_) {
-        Tp x0 = B(k, k);
+        Tp x0 = Bp[k * col + k];
         Tp normx = std::sqrt(sigma);
         Tp vk = (x0 >= 0) ? x0 + normx : x0 - normx;
         Tp beta = Tp(2) / (sigma - x0 * x0 + vk * vk);
 
-        B(k, k) = -((x0 >= 0) ? normx : -normx);
+        Bp[k * col + k] = -((x0 >= 0) ? normx : -normx);
         for (std::size_t i = k + 1; i < row; ++i)
-          B(i, k) /= vk;
+          Bp[i * col + k] /= vk;
 
-        // Apply to B
         for (std::size_t j = k + 1; j < col; ++j) {
-          Tp dot = B(k, j);
+          Tp dot = Bp[k * col + j];
           for (std::size_t i = k + 1; i < row; ++i)
-            dot += B(i, k) * B(i, j);
+            dot += Bp[i * col + k] * Bp[i * col + j];
           dot *= beta;
 
-          B(k, j) -= dot;
+          Bp[k * col + j] -= dot;
           for (std::size_t i = k + 1; i < row; ++i)
-            B(i, j) -= B(i, k) * dot;
+            Bp[i * col + j] -= Bp[i * col + k] * dot;
         }
 
         // Accumulate U
         for (std::size_t j = 0; j < row; ++j) {
-          Tp dot = U_matrix(k, j);
+          Tp dot = Up[k * row + j];
           for (std::size_t i = k + 1; i < row; ++i)
-            dot += B(i, k) * U_matrix(i, j);
+            dot += Bp[i * col + k] * Up[i * row + j];
           dot *= beta;
 
-          U_matrix(k, j) -= dot;
+          Up[k * row + j] -= dot;
           for (std::size_t i = k + 1; i < row; ++i)
-            U_matrix(i, j) -= B(i, k) * dot;
+            Up[i * row + j] -= Bp[i * col + k] * dot;
         }
       }
 
       if (k + 1 >= col)
         continue;
 
-      // Right Householder (row k)
+      // Right Householder
       sigma = 0;
-      for (std::size_t j = k + 1; j < col; ++j)
-        sigma += B(k, j) * B(k, j);
+      for (std::size_t j = k + 1; j < col; ++j) {
+        Tp v = Bp[k * col + j];
+        sigma += v * v;
+      }
 
       if (sigma > tolerance_) {
-        Tp x0 = B(k, k + 1);
+        Tp x0 = Bp[k * col + k + 1];
         Tp normx = std::sqrt(sigma);
         Tp vk = (x0 >= 0) ? x0 + normx : x0 - normx;
         Tp beta = Tp(2) / (sigma - x0 * x0 + vk * vk);
 
-        B(k, k + 1) = -((x0 >= 0) ? normx : -normx);
+        Bp[k * col + k + 1] = -((x0 >= 0) ? normx : -normx);
         for (std::size_t j = k + 2; j < col; ++j)
-          B(k, j) /= vk;
+          Bp[k * col + j] /= vk;
 
         for (std::size_t i = k + 1; i < row; ++i) {
-          Tp dot = B(i, k + 1);
+          Tp dot = Bp[i * col + k + 1];
           for (std::size_t j = k + 2; j < col; ++j)
-            dot += B(k, j) * B(i, j);
+            dot += Bp[k * col + j] * Bp[i * col + j];
           dot *= beta;
 
-          B(i, k + 1) -= dot;
+          Bp[i * col + k + 1] -= dot;
           for (std::size_t j = k + 2; j < col; ++j)
-            B(i, j) -= B(k, j) * dot;
+            Bp[i * col + j] -= Bp[k * col + j] * dot;
         }
 
         // Accumulate V
         for (std::size_t j = 0; j < col; ++j) {
-          Tp dot = V_matrix(k + 1, j);
+          Tp dot = Vp[(k + 1) * col + j];
           for (std::size_t i = k + 2; i < col; ++i)
-            dot += B(k, i) * V_matrix(i, j);
+            dot += Bp[k * col + i] * Vp[i * col + j];
           dot *= beta;
 
-          V_matrix(k + 1, j) -= dot;
-          for (std::size_t i = k + 2; i < row; ++i)
-            V_matrix(i, j) -= B(k, i) * dot;
+          Vp[(k + 1) * col + j] -= dot;
+          for (std::size_t i = k + 2; i < col; ++i)
+            Vp[i * col + j] -= Bp[k * col + i] * dot;
         }
       }
     }
 
-    // --- QR iteration on bidiagonal ---//
+    // --- QR iteration ---
     for (std::size_t iter = 0; iter < maxIterations_; ++iter) {
       bool converged = true;
       for (std::size_t i = 0; i + 1 < kmax; ++i)
-        if (std::abs(B(i, i + 1)) > tolerance_) {
+        if (std::abs(Bp[i * col + i + 1]) > tolerance_)
           converged = false;
-        }
 
-      if (converged) {
+      if (converged)
         break;
-      }
 
       for (std::size_t i = 0; i + 1 < kmax; ++i) {
-        Tp a = B(i, i);
-        Tp b = B(i, i + 1);
+        Tp a = Bp[i * col + i];
+        Tp b = Bp[i * col + i + 1];
         Tp r = std::hypot(a, b);
         Tp c = a / r;
         Tp s = -b / r;
 
-        B(i, i) = r;
-        B(i, i + 1) = 0;
+        Bp[i * col + i] = r;
+        Bp[i * col + i + 1] = 0;
 
         for (std::size_t j = i + 1; j < kmax; ++j) {
-          Tp t1 = c * B(j, i) - s * B(j, i + 1);
-          Tp t2 = s * B(j, i) + c * B(j, i + 1);
-          B(j, i) = t1;
-          B(j, i + 1) = t2;
+          Tp t1 = c * Bp[j * col + i] - s * Bp[j * col + i + 1];
+          Tp t2 = s * Bp[j * col + i] + c * Bp[j * col + i + 1];
+          Bp[j * col + i] = t1;
+          Bp[j * col + i + 1] = t2;
         }
       }
     }
 
-    for (std::size_t i = 0; i < kmax; ++i) {
-      singular_values[i] = std::abs(B(i, i));
-    }
+    for (std::size_t i = 0; i < kmax; ++i)
+      singular_values[i] = std::abs(Bp[i * col + i]);
   }
 };
+
 } // namespace Linea::Decompositions
 
 #endif

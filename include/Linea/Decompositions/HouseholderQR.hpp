@@ -6,6 +6,7 @@
 #define LINEA_HOUSEHOLDER_QR_HPP
 
 #include "../Core/Concepts.hpp"
+#include "../Core/PlatformMacros.hpp"
 #include "../Core/Types.hpp"
 #include "../Matrix/Matrix.hpp"
 #include "../Vector/Vector.hpp"
@@ -13,6 +14,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+
 
 namespace Linea::Decompositions {
 
@@ -38,12 +40,15 @@ public:
 
   Matrix<T> R(ComputeMode mode = ComputeMode::Thin) const {
     std::size_t target_rows = (mode == ComputeMode::Full) ? m_ : rank_;
-
     Matrix<T> Rmat(target_rows, n_);
+
+    const T *RESTRICT QRp = QR_.raw();
+    T *RESTRICT Rp = Rmat.raw();
+
     for (std::size_t i = 0; i < target_rows; ++i) {
       for (std::size_t j = i; j < n_; ++j) {
         if (i < m_) {
-          Rmat(i, j) = QR_(i, j);
+          Rp[i * n_ + j] = QRp[i * n_ + j];
         }
       }
     }
@@ -52,13 +57,14 @@ public:
 
   Matrix<T> Q(ComputeMode mode = ComputeMode::Thin) const {
     std::size_t target_cols = (mode == ComputeMode::Full) ? m_ : rank_;
-
     Matrix<T> Qmat(m_, target_cols);
-    for (std::size_t i = 0; i < m_; ++i) {
-      for (std::size_t j = 0; j < target_cols; ++j) {
-        Qmat(i, j) = (i == j ? T(1) : T(0));
-      }
-    }
+
+    T *RESTRICT Qp = Qmat.raw();
+
+    for (std::size_t i = 0; i < m_; ++i)
+      for (std::size_t j = 0; j < target_cols; ++j)
+        Qp[i * target_cols + j] = (i == j ? T(1) : T(0));
+
     applyQ(Qmat);
     return Qmat;
   }
@@ -76,82 +82,105 @@ public:
   Vector<T> solveLeastSquares(const Vector<T> &b) const {
     if (b.size() != m_)
       throw std::invalid_argument("Dimension mismatch");
+
     Vector<T> y = b;
     applyQT(y);
+
     Vector<T> x(n_);
+    const T *RESTRICT QRp = QR_.raw();
+
     for (std::size_t i = rank_; i-- > 0;) {
       T sum = y[i];
       for (std::size_t j = i + 1; j < rank_; ++j)
-        sum -= QR_(i, j) * x[j];
-      x[i] = sum / QR_(i, i);
+        sum -= QRp[i * n_ + j] * x[j];
+      x[i] = sum / QRp[i * n_ + i];
     }
     return x;
   }
 
 private:
   void factorize() {
-    std::size_t K = std::min(m_, n_);
+    const std::size_t K = std::min(m_, n_);
+    T *RESTRICT QRp = QR_.raw();
+
     for (std::size_t k = 0; k < K; ++k) {
       T sigma = 0;
-      for (std::size_t i = k; i < m_; ++i)
-        sigma += QR_(i, k) * QR_(i, k);
-      T normx = std::sqrt(sigma);
+      for (std::size_t i = k; i < m_; ++i) {
+        T v = QRp[i * n_ + k];
+        sigma += v * v;
+      }
 
+      T normx = std::sqrt(sigma);
       if (normx <= tol_) {
         betas_[k] = 0;
         continue;
       }
 
       rank_++;
-      T x0 = QR_(k, k);
+      T x0 = QRp[k * n_ + k];
       T alpha = (x0 >= 0) ? -normx : normx;
       T v0 = x0 - alpha;
 
-      QR_(k, k) = alpha;
+      QRp[k * n_ + k] = alpha;
       for (std::size_t i = k + 1; i < m_; ++i)
-        QR_(i, k) /= v0;
+        QRp[i * n_ + k] /= v0;
+
       betas_[k] = -v0 / alpha;
 
       for (std::size_t j = k + 1; j < n_; ++j) {
-        T dot = QR_(k, j);
+        T dot = QRp[k * n_ + j];
         for (std::size_t i = k + 1; i < m_; ++i)
-          dot += QR_(i, k) * QR_(i, j);
+          dot += QRp[i * n_ + k] * QRp[i * n_ + j];
+
         dot *= betas_[k];
-        QR_(k, j) -= dot;
+        QRp[k * n_ + j] -= dot;
+
         for (std::size_t i = k + 1; i < m_; ++i)
-          QR_(i, j) -= QR_(i, k) * dot;
+          QRp[i * n_ + j] -= QRp[i * n_ + k] * dot;
       }
     }
   }
 
   void applyQT(Vector<T> &vec) const {
-    std::size_t K = std::min(m_, n_);
+    const std::size_t K = std::min(m_, n_);
+    const T *RESTRICT QRp = QR_.raw();
+
     for (std::size_t k = 0; k < K; ++k) {
       if (betas_[k] == T(0))
         continue;
+
       T dot = vec[k];
       for (std::size_t i = k + 1; i < m_; ++i)
-        dot += QR_(i, k) * vec[i];
+        dot += QRp[i * n_ + k] * vec[i];
+
       dot *= betas_[k];
       vec[k] -= dot;
+
       for (std::size_t i = k + 1; i < m_; ++i)
-        vec[i] -= QR_(i, k) * dot;
+        vec[i] -= QRp[i * n_ + k] * dot;
     }
   }
 
   void applyQ(Matrix<T> &mat) const {
-    std::size_t K = std::min(m_, n_);
+    const std::size_t K = std::min(m_, n_);
+    const T *RESTRICT QRp = QR_.raw();
+    T *RESTRICT Mp = mat.raw();
+    const std::size_t ldM = mat.ncols();
+
     for (int k = static_cast<int>(K) - 1; k >= 0; --k) {
       if (betas_[k] == T(0))
         continue;
-      for (std::size_t j = 0; j < mat.ncols(); ++j) {
-        T dot = mat(k, j);
+
+      for (std::size_t j = 0; j < ldM; ++j) {
+        T dot = Mp[k * ldM + j];
         for (std::size_t i = k + 1; i < m_; ++i)
-          dot += QR_(i, k) * mat(i, j);
+          dot += QRp[i * n_ + k] * Mp[i * ldM + j];
+
         dot *= betas_[k];
-        mat(k, j) -= dot;
+        Mp[k * ldM + j] -= dot;
+
         for (std::size_t i = k + 1; i < m_; ++i)
-          mat(i, j) -= QR_(i, k) * dot;
+          Mp[i * ldM + j] -= QRp[i * n_ + k] * dot;
       }
     }
   }
