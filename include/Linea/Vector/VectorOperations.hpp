@@ -129,6 +129,61 @@ template <NumericType V> V Vector<V>::dot(const Vector<V> &other) const {
   return sum;
 }
 
+// Norm
+template <NumericType V>
+double Vector<V>::norm(VectorNorm type, double p) const {
+  switch (type) {
+  case VectorNorm::One:
+    return norm_L1();
+  case VectorNorm::Two:
+    return norm_L2();
+  case VectorNorm::Infinity:
+    return norm_Lmax();
+  case VectorNorm::P:
+    return norm_Lp(p);
+  default:
+    return norm_L2();
+  }
+}
+
+//  L1 norm
+template <NumericType V> double Vector<V>::norm_L1() const {
+  return std::accumulate(data.begin(), data.end(), V{0},
+                         [](double sum, V value) {
+                           return sum + static_cast<double>(std::abs(value));
+                         });
+}
+
+//  L2 norm
+template <NumericType V> double Vector<V>::norm_L2() const {
+  return std::sqrt(
+      std::accumulate(data.begin(), data.end(), 0.0, [](double sum, V value) {
+        double d = static_cast<double>(value);
+        return sum + d * d;
+      }));
+}
+
+// Infinity norm
+template <NumericType V> double Vector<V>::norm_Lmax() const {
+  if (data.empty())
+    throw std::domain_error("norm_Lmax: empty vector");
+  double max_elem = std::abs(static_cast<double>(data[0]));
+  for (std::size_t i = 1; i < data.size(); ++i)
+    max_elem = std::max(max_elem, std::abs(static_cast<double>(data[i])));
+  return max_elem;
+}
+
+//  Lp norm
+template <NumericType V> double Vector<V>::norm_Lp(double p) const {
+  if (p < 1.0)
+    throw std::invalid_argument("Lp norm requires p >= 1");
+  double sum =
+      std::accumulate(data.begin(), data.end(), 0.0, [p](double acc, V value) {
+        return acc + std::pow(std::abs(static_cast<double>(value)), p);
+      });
+  return std::pow(sum, 1.0 / p);
+}
+
 // Outer product
 template <NumericType V>
 Matrix<V> Vector<V>::outer(const Vector<V> &other) const {

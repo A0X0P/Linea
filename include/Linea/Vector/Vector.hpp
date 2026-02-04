@@ -130,8 +130,15 @@ public:
 
   V dot(const Vector<V> &other) const;
 
-  V norm() const;
+  double norm(VectorNorm type = VectorNorm::Two, double p = 2.0) const;
 
+private:
+  double norm_L1() const;
+  double norm_L2() const;
+  double norm_Lmax() const;
+  double norm_Lp(double p) const;
+
+public:
   Matrix<V> outer(const Vector<V> &other) const;
   Matrix<V> reshape(std::size_t rows, std::size_t columns) const;
 
