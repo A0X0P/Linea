@@ -5,9 +5,10 @@
 #ifndef LINEA_MATRIX_UTILITIES_H
 #define LINEA_MATRIX_UTILITIES_H
 
+#include "../Decompositions/SVD.hpp"
 #include "Matrix.hpp"
 #include <iostream>
-#include <string>
+#include <limits>
 
 namespace Linea {
 
@@ -397,16 +398,17 @@ template <NumericType M> double Matrix<M>::norm() const {
   return std::sqrt(sum);
 }
 
-template <NumericType M> double Matrix<M>::norm(NormType type) const {
+template <NumericType M>
+double Matrix<M>::norm(MatrixNorm type, std::size_t max_iter) const {
   switch (type) {
-  case NormType::Frobenius:
+  case MatrixNorm::Frobenius:
     return norm();
-  case NormType::One:
+  case MatrixNorm::One:
     return norm_1();
-  case NormType::Infinity:
+  case MatrixNorm::Infinity:
     return norm_infinity();
-  case NormType::Spectral:
-    return norm_spectral();
+  case MatrixNorm::Spectral:
+    return norm_spectral(max_iter);
   default:
     return norm();
   }
@@ -443,10 +445,88 @@ template <NumericType M> double Matrix<M>::norm_infinity() const {
   return max_sum;
 }
 
-template <NumericType M> double Matrix<M>::norm_spectral() const {
-  // Spectral norm is the largest singular value
-  // For now, not implemented
-  return 0;
+template <NumericType M>
+double Matrix<M>::norm_spectral(std::size_t max_iter) const {
+
+  static_assert(std::is_floating_point_v<M>,
+                "Spectral norm requires floating-point type");
+
+  const std::size_t m = row;
+  const std::size_t n = column;
+
+  //  power iteration for Large matrices
+  if (std::min(m, n) > 64) {
+
+    const M *__restrict__ Ap = raw();
+
+    std::vector<M> x(n), y(m);
+
+    for (std::size_t j = 0; j < n; ++j)
+      x[j] = M(1);
+
+    // Normalize x
+    M norm_x = 0;
+    for (M v : x)
+      norm_x += v * v;
+    norm_x = std::sqrt(norm_x);
+
+    for (M &v : x)
+      v /= norm_x;
+
+    M sigma = 0;
+    const M tol = std::sqrt(std::numeric_limits<M>::epsilon());
+
+    for (std::size_t iter = 0; iter < max_iter; ++iter) {
+
+      // y = A * x
+      for (std::size_t i = 0; i < m; ++i) {
+        M sum = 0;
+        const M *Ai = Ap + i * n;
+        for (std::size_t j = 0; j < n; ++j)
+          sum += Ai[j] * x[j];
+        y[i] = sum;
+      }
+
+      // sigma = ||y||
+      M sigma_new = 0;
+      for (M v : y)
+        sigma_new += v * v;
+      sigma_new = std::sqrt(sigma_new);
+
+      // Convergence check
+      if (std::abs(sigma_new - sigma) / std::max(M(1), sigma_new) < tol) {
+        sigma = sigma_new;
+        break;
+      }
+
+      sigma = sigma_new;
+
+      // x = Aᵀ * y
+      for (std::size_t j = 0; j < n; ++j) {
+        M sum = 0;
+        for (std::size_t i = 0; i < m; ++i)
+          sum += Ap[i * n + j] * y[i];
+        x[j] = sum;
+      }
+
+      // Normalize x
+      norm_x = 0;
+      for (M v : x)
+        norm_x += v * v;
+      norm_x = std::sqrt(norm_x);
+
+      const M inv_norm = M(1) / norm_x;
+      for (M &v : x)
+        v *= inv_norm;
+    }
+
+    return static_cast<double>(sigma);
+  }
+
+  // --- Small / medium matrices: exact SVD ---
+  Decompositions::SVD<M> svd(*this);
+  return *std::max_element(svd.singularValues().begin(),
+                           svd.singularValues().end());
 }
 
 // Forward substitution

@@ -22,7 +22,7 @@
 namespace Linea {
 
 template <NumericType M> struct LUResult {
-  Vector<M> permutation_vector;
+  Vector<std::size_t> permutation_vector;
   std::size_t rank;
   std::size_t swap_count;
 };
@@ -354,6 +354,8 @@ public:
   Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
   Matrix<M> flatten() const;
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
+  Matrix<M> block(std::size_t row, std::size_t col, std::size_t nrows,
+                  std::size_t ncols) const;
 
   M minor(std::size_t row_idx, std::size_t col_idx) const;
   M cofactor(std::size_t row_index, std::size_t column_index) const;
@@ -370,12 +372,12 @@ public:
 
   // Norms
   double norm() const;
-  double norm(NormType type) const;
+  double norm(MatrixNorm type, std::size_t max_iter = 100) const;
 
 private:
   double norm_1() const;
   double norm_infinity() const;
-  double norm_spectral() const;
+  double norm_spectral(std::size_t max_iter) const;
 
   Vector<M> forward_substitution(const Matrix<M> &L, const Vector<M> &b,
                                  const Vector<M> &piv) const;
