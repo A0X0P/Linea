@@ -276,9 +276,7 @@ public:
   M &operator()(std::size_t i, std::size_t j);
   const M &operator()(std::size_t i, std::size_t j) const;
 
-private:
   [[nodiscard]] inline M *raw() noexcept { return data.data(); }
-
   [[nodiscard]] inline const M *raw() const noexcept { return data.data(); }
 
 public:
