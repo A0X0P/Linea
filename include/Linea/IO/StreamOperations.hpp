@@ -79,7 +79,7 @@ std::ostream &display(std::ostream &os, const Vector<F> &vector,
   } else {
     os << std::setprecision(fmt.precision) << std::right << std::showpoint;
     for (std::size_t i = 0; i < vector.size(); ++i) {
-      os << std::setw(fmt.width) << vector[i] << '\n';
+      os << "[" << std::setw(fmt.width) << vector[i] << "]\n";
     }
   }
 
