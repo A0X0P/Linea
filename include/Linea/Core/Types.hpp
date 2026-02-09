@@ -1,5 +1,5 @@
 // created by : A.N. Prosper
-// date : january 25th 2025
+// date : january 25th 2026
 // time : 13:21
 
 #ifndef LINEA_TYPES_H
@@ -13,9 +13,8 @@ namespace Linea {
 template <NumericType T, NumericType S>
 using Numeric = std::common_type_t<T, S>;
 
-enum class NormType { Frobenius, One, Infinity, Spectral };
 enum class MatrixNorm { Frobenius, One, Infinity, Spectral };
-enum class VectorNorm { L1, L2, LInf };
+enum class VectorNorm { One, Two, Infinity, P };
 enum class Diagonal { Major, Minor };
 enum class ComputeMode { Thin, Full };
 
