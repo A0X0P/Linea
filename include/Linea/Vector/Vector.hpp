@@ -130,6 +130,12 @@ public:
 
   V dot(const Vector<V> &other) const;
 
+  template <NumericType T>
+  friend double distance(const Vector<T> &a, const Vector<T> &b);
+
+  template <NumericType T>
+  friend double angle(const Vector<T> &a, const Vector<T> &b);
+
   double norm(VectorNorm type = VectorNorm::Two, double p = 2.0) const;
 
 private:

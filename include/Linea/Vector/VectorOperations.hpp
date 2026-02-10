@@ -129,6 +129,32 @@ template <NumericType V> V Vector<V>::dot(const Vector<V> &other) const {
   return sum;
 }
 
+// Distance
+template <NumericType T>
+double distance(const Vector<T> &a, const Vector<T> &b) {
+  if (a.size() != b.size()) {
+    throw std::invalid_argument("distance requires same size vectors");
+  }
+
+  double sum = 0;
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    double dis = a[i] - b[i];
+    sum += dis * dis;
+  }
+  return std::sqrt(sum);
+};
+
+// Angle
+template <NumericType T> double angle(const Vector<T> &a, const Vector<T> &b) {
+  if (a.size() != b.size()) {
+    throw std::invalid_argument("angle requires same size vectors");
+  }
+
+  auto cosθ = (a.dot(b)) / (a.norm_L2() * b.norm_L2());
+  cosθ = std::clamp(cosθ, double{-1}, double{1});
+  return std::acos(cosθ);
+};
+
 // Norm
 template <NumericType V>
 double Vector<V>::norm(VectorNorm type, double p) const {
