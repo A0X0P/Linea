@@ -26,7 +26,7 @@
 
 #include "Linea/Decompositions/Cholesky.hpp"
 #include "Linea/Decompositions/HouseholderQR.hpp"
-#include "Linea/Decompositions/LUFactor.hpp"
+#include "Linea/Decompositions/LU.hpp"
 #include "Linea/Decompositions/SVD.hpp"
 
 // IO

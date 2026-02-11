@@ -74,6 +74,15 @@ public:
     }
   }
 
+  // casting
+  template <NumericType U>
+  explicit Matrix(const Matrix<U> &matrix)
+      : row(matrix.row), column(matrix.column),
+        data(matrix.row * matrix.column) {
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      data.data()[i] = static_cast<M>(matrix.data.data()[i]);
+    }
+  }
   // Destructor
   ~Matrix() {}
 
