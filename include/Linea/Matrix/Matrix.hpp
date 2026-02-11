@@ -348,7 +348,8 @@ public:
   M trace() const;
   Vector<M> diagonal(Diagonal type = Diagonal::Major) const;
   Matrix<M> Transpose() const;
-  std::size_t Rank() const;
+  std::size_t Rank() const
+    requires RealType<M>;
   Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
   Matrix<M> flatten() const;
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
@@ -356,17 +357,19 @@ public:
                   std::size_t ncols) const;
 
   M minor(std::size_t row_idx, std::size_t col_idx) const;
-  M cofactor(std::size_t row_index, std::size_t column_index) const;
+  M cofactor(std::size_t row_idx, std::size_t col_idx) const;
   Matrix<M> cofactor_matrix() const;
   Matrix<M> adjoint() const;
-  M determinant() const;
-  Matrix<M> Inverse() const;
 
-  Vector<M> solve(const Vector<M> &b) const;
-  Matrix<M> solve(const Matrix<M> &B) const;
+  M determinant() const
+    requires RealType<M>;
+  Matrix<M> Inverse() const
+    requires RealType<M>;
 
-  LUFactor<M> lu_decompose(M epsilon = M(0)) const;
-  Matrix<M> cholesky() const;
+  Vector<M> solve(const Vector<M> &b) const
+    requires RealType<M>;
+  Matrix<M> solve(const Matrix<M> &B) const
+    requires RealType<M>;
 
   // Norms
   double norm() const;
@@ -378,8 +381,10 @@ private:
   double norm_spectral(std::size_t max_iter) const;
 
   Vector<M> forward_substitution(const Matrix<M> &L, const Vector<M> &b,
-                                 const Vector<M> &piv) const;
-  Vector<M> backward_substitution(const Matrix<M> &U, const Vector<M> &y) const;
+                                 const Vector<std::size_t> &piv) const
+    requires RealType<M>;
+  Vector<M> backward_substitution(const Matrix<M> &U, const Vector<M> &y) const
+    requires RealType<M>;
 
   // Friend declarations
 

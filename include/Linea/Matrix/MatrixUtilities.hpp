@@ -5,6 +5,7 @@
 #ifndef LINEA_MATRIX_UTILITIES_H
 #define LINEA_MATRIX_UTILITIES_H
 
+#include "../Decompositions/LU.hpp"
 #include "../Decompositions/SVD.hpp"
 #include "Matrix.hpp"
 #include <iostream>
@@ -109,8 +110,11 @@ template <NumericType M> Matrix<M> Matrix<M>::Transpose() const {
 }
 
 // Rank
-template <NumericType M> std::size_t Matrix<M>::Rank() const {
-  return lu_decompose().get_rank();
+template <NumericType M>
+std::size_t Matrix<M>::Rank() const
+  requires RealType<M>
+{
+  return Linea::Decompositions::LU<M>(*this).rank();
 }
 
 // Reshape
@@ -219,173 +223,112 @@ template <NumericType M> Matrix<M> Matrix<M>::adjoint() const {
 }
 
 // Determinant
-template <NumericType M> M Matrix<M>::determinant() const {
-  if (row != column) {
-    throw std::invalid_argument("Matrix determinant requires row == column.");
-  }
+template <NumericType M>
+M Matrix<M>::determinant() const
+  requires RealType<M>
+{
 
-  LUFactor<M> result = lu_decompose();
-  Matrix<M> U_matrix = result.extract_U();
+  if (row != column)
+    throw std::invalid_argument("Determinant requires square matrix");
 
-  if (result.get_rank() < U_matrix.nrows()) {
+  Linea::Decompositions::LU<M> lu(*this);
+  Matrix<M> U = lu.U();
+  const M *u_ptr = U.raw();
+  const std::size_t R = row;
+
+  if (lu.rank() < R)
     return M{0};
-  }
 
-  M major_diagonal = M{1};
-  for (std::size_t i{}; i < U_matrix.nrows(); i++) {
-    major_diagonal *= U_matrix(i, i);
-  }
-  bool even_swaps = (result.get_swap_count() % 2 == 0);
-  return even_swaps ? major_diagonal : -major_diagonal;
+  M det = M{1};
+  for (std::size_t i = 0; i < R; ++i)
+    det *= u_ptr[i * R + i];
+
+  return (lu.swap_count() % 2 == 0) ? det : -det;
 }
 
 // Inverse
-template <NumericType M> Matrix<M> Matrix<M>::Inverse() const {
-  LUFactor<M> lu_result = lu_decompose();
-  Matrix<M> L = lu_result.extract_L();
-  Matrix<M> U = lu_result.extract_U();
-  Vector<M> piv = lu_result.get_permutation_vector();
-  std::size_t n = this->row;
+template <NumericType M>
+Matrix<M> Matrix<M>::Inverse() const
+  requires RealType<M>
+{
 
-  if (lu_result.get_rank() < n) {
-    throw std::runtime_error("Matrix is singular; cannot compute inverse");
-  }
+  if (row != column)
+    throw std::invalid_argument("Inverse requires square matrix");
 
-  Matrix<M> inverse_matrix(n, n);
+  Linea::Decompositions::LU<M> lu(*this);
+  const std::size_t n = row;
 
-  for (std::size_t i = 0; i < n; i++) {
-    Vector<M> e_i(n, M{});
-    e_i[i] = M{1};
+  if (lu.rank() < n)
+    throw std::runtime_error("Matrix is singular");
 
-    Vector<M> y = forward_substitution(L, e_i, piv);
+  auto L = lu.L();
+  auto U = lu.U();
+
+  Matrix<M> inv(n, n);
+  M *invr = inv.raw();
+
+  for (std::size_t i = 0; i < n; ++i) {
+    Vector<M> e(n, M{});
+    e[i] = M{1};
+
+    Vector<M> y = forward_substitution(L, e, lu.permutation());
     Vector<M> x = backward_substitution(U, y);
 
-    for (std::size_t j = 0; j < n; j++) {
-      inverse_matrix(j, i) = x[j];
-    }
+    for (std::size_t j = 0; j < n; ++j)
+      invr[j * n + i] = x[j];
   }
-  return inverse_matrix;
+
+  return inv;
 }
 
 // Solve (vector)
-template <NumericType M> Vector<M> Matrix<M>::solve(const Vector<M> &b) const {
-  LUFactor<M> lu_result = lu_decompose();
-  Matrix<M> L = lu_result.extract_L();
-  Matrix<M> U = lu_result.extract_U();
-  Vector<M> piv = lu_result.get_permutation_vector();
+template <NumericType M>
+Vector<M> Matrix<M>::solve(const Vector<M> &b) const
+  requires RealType<M>
+{
 
-  Vector<M> y = forward_substitution(L, b, piv);
+  Linea::Decompositions::LU<M> lu(*this);
+  Matrix<M> L = lu.L();
+  Matrix<M> U = lu.U();
+
+  Vector<M> y = forward_substitution(L, b, lu.permutation());
   Vector<M> x = backward_substitution(U, y);
 
   return x;
 }
 
 // Solve (matrix)
-template <NumericType M> Matrix<M> Matrix<M>::solve(const Matrix<M> &B) const {
-  LUFactor<M> lu_result = lu_decompose();
-  Matrix<M> L = lu_result.extract_L();
-  Matrix<M> U = lu_result.extract_U();
-  Vector<M> piv = lu_result.get_permutation_vector();
+template <NumericType M>
+Matrix<M> Matrix<M>::solve(const Matrix<M> &B) const
+  requires RealType<M>
+{
+  Linea::Decompositions::LU<M> lu(*this);
+  Matrix<M> L = lu.L();
+  Matrix<M> U = lu.U();
 
-  std::size_t n = this->row;
-  std::size_t m = B.column;
+  const std::size_t n = row;
+  const std::size_t m = B.ncols();
 
   Matrix<M> X(n, m);
+  M *X_ptr = X.raw();
+  const M *other_ptr = B.raw();
 
-  for (std::size_t i = 0; i < m; i++) {
-    Vector<M> b_i(n);
-    for (std::size_t j = 0; j < n; j++) {
-      b_i[j] = B(j, i);
-    }
+  for (std::size_t j = 0; j < m; ++j) {
+    Vector<M> b(n);
+    M *b_ptr = b.raw();
 
-    Vector<M> y = forward_substitution(L, b_i, piv);
-    Vector<M> x = backward_substitution(U, y);
+    for (std::size_t i = 0; i < n; ++i)
+      b_ptr[i] = other_ptr[i * m + j];
 
-    for (std::size_t j = 0; j < n; j++) {
-      X(j, i) = x[j];
-    }
+    Vector<M> y = forward_substitution(L, b, lu.permutation());
+    Vector<M> x = backward_sub(U, y);
+    const M *x_ptr = x.raw();
+
+    for (std::size_t i = 0; i < n; ++i)
+      X_ptr[i * m + j] = x_ptr[i];
   }
 
   return X;
-}
-
-// LU Decomposition
-template <NumericType M> LUFactor<M> Matrix<M>::lu_decompose(M epsilon) const {
-  const std::size_t m = row;
-  const std::size_t n = column;
-  const std::size_t k_max = std::min(m, n);
-
-  Matrix<M> LU = (*this);
-
-  LUResult<M> result{};
-  result.rank = 0;
-  result.swap_count = 0;
-  result.permutation_vector = Vector<M>(m);
-  for (std::size_t i{}; i < m; ++i) {
-    result.permutation_vector[i] = i;
-  }
-  Vector<M> row_index = result.permutation_vector;
-
-  // Compute adaptive epsilon if not provided by the user
-  M effective_epsilon = epsilon;
-  if (effective_epsilon == M(0)) {
-    M max_elem = M(0);
-    for (std::size_t i = 0; i < m; ++i) {
-      for (std::size_t j = 0; j < n; ++j) {
-        max_elem = std::max(max_elem, std::abs((*this)(i, j)));
-      }
-    }
-    effective_epsilon =
-        std::numeric_limits<M>::epsilon() * max_elem * std::max(m, n);
-  }
-
-  for (std::size_t k{}; k < k_max; ++k) {
-    // Pivot selection
-    std::size_t pivot = k;
-    M max_value = std::abs(LU(row_index[k], k));
-
-    for (std::size_t i = k + 1; i < m; ++i) {
-      M val = std::abs(LU(row_index[i], k));
-      if (val > max_value) {
-        max_value = val;
-        pivot = i;
-      }
-    }
-
-    if (max_value < effective_epsilon) {
-      continue;
-    }
-
-    if (pivot != k) {
-      std::swap(row_index[k], row_index[pivot]);
-      std::swap(result.permutation_vector[k], result.permutation_vector[pivot]);
-      ++result.swap_count;
-    }
-
-    const std::size_t physical_pivot_row = row_index[k];
-
-    // Elimination
-    for (std::size_t i = k + 1; i < m; ++i) {
-      const std::size_t physical_row = row_index[i];
-      LU(physical_row, k) /= LU(physical_pivot_row, k);
-
-      for (std::size_t j = k + 1; j < n; ++j) {
-        LU(physical_row, j) -= LU(physical_row, k) * LU(physical_pivot_row, j);
-      }
-    }
-
-    ++result.rank;
-  }
-
-  // Physically permute LU to match permutation
-  Matrix<M> LU_perm(m, n);
-  for (std::size_t i{}; i < m; ++i) {
-    for (std::size_t j{}; j < n; ++j) {
-      LU_perm(i, j) = LU(row_index[i], j);
-    }
-  }
-
-  return LUFactor<M>(std::move(LU_perm), std::move(result));
 }
 
 // Norms
@@ -533,18 +476,21 @@ double Matrix<M>::norm_spectral(std::size_t max_iter) const {
 template <NumericType M>
 Vector<M> Matrix<M>::forward_substitution(const Matrix<M> &L,
                                           const Vector<M> &b,
-                                          const Vector<M> &piv) const {
-  std::size_t n = L.row;
+                                          const Vector<std::size_t> &piv) const
+  requires RealType<M>
+{
+  std::size_t n = L.nrows();
+  const std::size_t k = L.ncols();
   Vector<M> y(n);
-
+  M const *Lp = L.raw();
   for (std::size_t i = 0; i < n; ++i) {
     M sum{};
 
     for (std::size_t j = 0; j < i; ++j) {
-      sum += L(i, j) * y[j];
+      sum += Lp[i * k + j] * y[j];
     }
 
-    y[i] = (b[piv[i]] - sum) / L(i, i);
+    y[i] = (b[piv[i]] - sum) / Lp[i * k + i];
   }
   return y;
 }
@@ -552,18 +498,22 @@ Vector<M> Matrix<M>::forward_substitution(const Matrix<M> &L,
 // Backward substitution
 template <NumericType M>
 Vector<M> Matrix<M>::backward_substitution(const Matrix<M> &U,
-                                           const Vector<M> &y) const {
-  std::size_t n = U.row;
-  Vector<M> x(n);
+                                           const Vector<M> &y) const
+  requires RealType<M>
+{
 
+  std::size_t n = U.row;
+  std::size_t k = U.column;
+  Vector<M> x(n);
+  M const *U_ptr = U.raw();
   for (std::size_t i = n; i-- > 0;) {
     M sum{};
 
     for (std::size_t j = i + 1; j < n; ++j) {
-      sum += U(i, j) * x[j];
+      sum += U_ptr[i * k + j] * x[j];
     }
 
-    x[i] = (y[i] - sum) / U(i, i);
+    x[i] = (y[i] - sum) / U_ptr[i * k + i];
   }
   return x;
 }
