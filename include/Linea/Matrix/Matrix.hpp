@@ -21,12 +21,6 @@
 
 namespace Linea {
 
-template <NumericType M> struct LUResult {
-  Vector<std::size_t> permutation_vector;
-  std::size_t rank;
-  std::size_t swap_count;
-};
-
 template <NumericType M> class LUFactor;
 
 template <NumericType M> class Matrix {
