@@ -10,7 +10,6 @@
 #include "Vector3D.hpp"
 #include <algorithm>
 #include <initializer_list>
-#include <iostream>
 #include <random>
 #include <stdexcept>
 #include <vector>
@@ -67,6 +66,14 @@ public:
 
   // vector3D initialization
   Vector(const Vector3D<V> &v);
+
+  // casting
+  template <NumericType U>
+  explicit Vector(const Vector<U> &vector) : data(vector.size()) {
+    for (std::size_t i = 0; i < data.size(); ++i) {
+      data.data()[i] = static_cast<V>(vector.data.data()[i]);
+    }
+  }
 
   // Getters
   std::size_t size() const noexcept { return data.size(); };
