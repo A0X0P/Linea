@@ -5,6 +5,7 @@
 #ifndef LINEA_VECTOR_H
 #define LINEA_VECTOR_H
 #include "../Core/Concepts.hpp"
+#include "../Core/PlatformMacros.hpp"
 #include "../Core/Types.hpp"
 #include "../Core/Utilities.hpp"
 #include "Vector3D.hpp"
@@ -41,23 +42,24 @@ public:
   explicit Vector(const std::vector<V> &v) : data(v) {};
 
   // random initialization
-  static Vector<V> rand_fill(std::size_t size, V min_range, V max_range) {
+  static Vector<V> random(std::size_t size, V min_range, V max_range) {
     auto low = std::min(min_range, max_range);
     auto high = std::max(min_range, max_range);
 
     Vector<V> result(size);
+    auto *RESTRICT out = result.raw();
     static thread_local std::mt19937 engine(std::random_device{}());
 
     if constexpr (std::is_integral_v<V>) {
       std::uniform_int_distribution<V> distribute(low, high);
       for (std::size_t i{}; i < size; ++i) {
-        result[i] = distribute(engine);
+        out[i] = distribute(engine);
       }
 
     } else if constexpr (std::is_floating_point_v<V>) {
       std::uniform_real_distribution<V> distribute(low, high);
       for (std::size_t i{}; i < size; ++i) {
-        result[i] = distribute(engine);
+        out[i] = distribute(engine);
       }
     }
 
@@ -71,7 +73,9 @@ public:
   template <NumericType U>
   explicit Vector(const Vector<U> &vector) : data(vector.size()) {
     for (std::size_t i = 0; i < data.size(); ++i) {
-      data.data()[i] = static_cast<V>(vector.data.data()[i]);
+      auto *RESTRICT out = this->raw();
+      auto *RESTRICT in = vector.raw();
+      out[i] = static_cast<V>(in[i]);
     }
   }
 
@@ -94,21 +98,24 @@ public:
     return data[index];
   };
 
-  V &operator()(std::size_t index);
-  const V &operator()(std::size_t index) const;
+  [[nodiscard]] inline V *raw() noexcept { return data.data(); }
+  [[nodiscard]] inline const V *raw() const noexcept { return data.data(); }
 
   // Comparison operators
   bool operator==(const Vector<V> &other) const noexcept {
     if (data.size() != other.size())
       return false;
 
+    auto *RESTRICT out = this->raw();
+    auto *RESTRICT in = other.raw();
+
     if constexpr (IntegralType<V>) {
       for (std::size_t i = 0; i < data.size(); ++i)
-        if (data[i] != other.data[i])
+        if (out[i] != in[i])
           return false;
     } else if constexpr (RealType<V>) {
       for (std::size_t i = 0; i < data.size(); ++i)
-        if (!floating_point_equality(data[i], other.data[i]))
+        if (!floating_point_equality(out[i], in[i]))
           return false;
     }
 

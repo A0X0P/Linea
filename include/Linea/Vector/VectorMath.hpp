@@ -16,8 +16,8 @@ namespace Linea {
 template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   for (std::size_t i = 0; i < n; ++i)
     out[i] = std::sin(in[i]);
   return result;
@@ -27,8 +27,8 @@ template <RealType N> inline Vector<N> sin(const Vector<N> &vec) {
 template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   for (std::size_t i = 0; i < n; ++i)
     out[i] = std::cos(in[i]);
   return result;
@@ -38,8 +38,8 @@ template <RealType N> inline Vector<N> cos(const Vector<N> &vec) {
 template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   constexpr N eps = N(1e-12);
   for (std::size_t i = 0; i < n; ++i) {
     if (std::abs(std::cos(in[i])) < eps)
@@ -54,8 +54,8 @@ template <RealType N> inline Vector<N> tan(const Vector<N> &vec) {
 template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   for (std::size_t i = 0; i < n; ++i) {
     if (in[i] < N(0))
       throw std::domain_error("sqrt undefined for element " +
@@ -69,8 +69,8 @@ template <RealType N> inline Vector<N> sqrt(const Vector<N> &vec) {
 template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   for (std::size_t i = 0; i < n; ++i) {
     if (in[i] <= N(0))
       throw std::domain_error("log undefined for element " +
@@ -84,8 +84,8 @@ template <RealType N> inline Vector<N> log(const Vector<N> &vec) {
 template <RealType N> inline Vector<N> exp(const Vector<N> &vec) {
   const std::size_t n = vec.data.size();
   Vector<N> result(n);
-  const N *in = vec.data.data();
-  N *out = result.data.data();
+  const N *RESTRICT in = vec.raw();
+  N *RESTRICT out = result.raw();
   for (std::size_t i = 0; i < n; ++i)
     out[i] = std::exp(in[i]);
   return result;

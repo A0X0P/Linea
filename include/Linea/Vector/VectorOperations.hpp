@@ -17,8 +17,11 @@ Vector<V> Vector<V>::operator+(const Vector<V> &other) const {
   }
   const std::size_t n = data.size();
   Vector<V> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] + other[i];
+    out[i] = a[i] + b[i];
   }
   return result;
 }
@@ -32,8 +35,11 @@ Vector<Numeric<T, V>> Vector<V>::operator+(const Vector<T> &other) const {
   }
   const std::size_t n = data.size();
   Vector<Numeric<T, V>> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] + other[i];
+    out[i] = a[i] + b[i];
   }
   return result;
 }
@@ -46,8 +52,11 @@ Vector<V> Vector<V>::operator-(const Vector<V> &other) const {
   }
   const std::size_t n = data.size();
   Vector<V> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] - other[i];
+    out[i] = a[i] - b[i];
   }
   return result;
 }
@@ -61,8 +70,11 @@ Vector<Numeric<T, V>> Vector<V>::operator-(const Vector<T> &other) const {
   }
   const std::size_t n = data.size();
   Vector<Numeric<T, V>> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] - other[i];
+    out[i] = a[i] - b[i];
   }
   return result;
 }
@@ -76,8 +88,11 @@ Vector<V> Vector<V>::hadamard(const Vector<V> &other) const {
 
   const std::size_t n = data.size();
   Vector<V> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] * other[i];
+    out[i] = a[i] * b[i];
   }
   return result;
 }
@@ -92,8 +107,11 @@ Vector<Numeric<T, V>> Vector<V>::hadamard(const Vector<T> &other) const {
 
   const std::size_t n = data.size();
   Vector<Numeric<T, V>> result(n);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    result[i] = data[i] * other[i];
+    out[i] = a[i] * b[i];
   }
   return result;
 }
@@ -103,8 +121,11 @@ template <NumericType V>
 template <NumericType S>
 Vector<Numeric<V, S>> Vector<V>::operator*(S scalar) const {
   Vector<Numeric<V, S>> result(data.size());
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+
   for (std::size_t i = 0; i < data.size(); ++i) {
-    result[i] = data[i] * scalar;
+    out[i] = a[i] * scalar;
   }
   return result;
 }
@@ -123,8 +144,11 @@ template <NumericType V> V Vector<V>::dot(const Vector<V> &other) const {
 
   const std::size_t n = data.size();
   V sum = V{0};
+
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < n; ++i) {
-    sum += data[i] * other[i];
+    sum += a[i] * b[i];
   }
   return sum;
 }
@@ -137,8 +161,10 @@ double distance(const Vector<T> &a, const Vector<T> &b) {
   }
 
   double sum = 0;
+  const auto *RESTRICT _a = a.raw();
+  const auto *RESTRICT _b = b.raw();
   for (std::size_t i = 0; i < a.size(); ++i) {
-    double dis = a[i] - b[i];
+    double dis = _a[i] - _b[i];
     sum += dis * dis;
   }
   return std::sqrt(sum);
@@ -218,9 +244,9 @@ Matrix<V> Vector<V>::outer(const Vector<V> &other) const {
 
   Matrix<V> result(rows, cols);
 
-  const V *data_ptr = data.data();
-  const V *other_ptr = other.data.data();
-  V *result_ptr = result.data.data();
+  const V *RESTRICT data_ptr = this->raw();
+  const V *RESTRICT other_ptr = other.raw();
+  V *RESTRICT result_ptr = result.raw();
 
   for (std::size_t i = 0; i < rows; ++i) {
     const V data_ptr_idx = data_ptr[i];
@@ -267,13 +293,15 @@ Vector<Numeric<T, V>> Vector<V>::join(const Vector<T> &other) const {
   const std::size_t this_size = data.size();
   const std::size_t other_size = other.data.size();
   Vector<Numeric<T, V>> result(this_size + other_size);
-
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
   for (std::size_t i = 0; i < this_size; ++i) {
-    result[i] = data[i];
+    out[i] = a[i];
   }
 
   for (std::size_t i = 0; i < other_size; ++i) {
-    result[this_size + i] = other[i];
+    out[this_size + i] = b[i];
   }
 
   return result;
@@ -287,8 +315,10 @@ Vector<V> Vector<V>::segment(std::size_t start, std::size_t length) const {
   }
 
   Vector<V> result(length);
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
   for (std::size_t i = 0; i < length; ++i) {
-    result[i] = (*this)[start + i];
+    out[i] = a[start + i];
   }
   return result;
 }
