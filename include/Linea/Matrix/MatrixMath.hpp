@@ -16,7 +16,7 @@ template <RealType N> Matrix<N> sin(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::sin;
   for (std::size_t i = 0; i < n; ++i) {
@@ -30,7 +30,7 @@ template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::cos;
   for (std::size_t i = 0; i < n; ++i) {
@@ -44,7 +44,7 @@ template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::cos;
   using std::tan;
@@ -61,7 +61,7 @@ template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::sqrt;
   for (std::size_t i = 0; i < n; ++i) {
@@ -76,7 +76,7 @@ template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::log;
   for (std::size_t i = 0; i < n; ++i) {
@@ -91,7 +91,7 @@ template <RealType N> Matrix<N> exp(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::exp;
   for (std::size_t i = 0; i < n; ++i) {
@@ -113,7 +113,7 @@ template <IntegralType U> Matrix<U> pow(const Matrix<U> &matrix, int exponent) {
   Matrix<U> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   for (std::size_t i = 0; i < n; ++i) {
     out[i] = integer_pow(a[i], static_cast<unsigned int>(exponent));
@@ -126,7 +126,7 @@ template <RealType U> Matrix<U> pow(const Matrix<U> &matrix, U exponent) {
   Matrix<U> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
-  const std::size_t n = matrix.data.size();
+  const std::size_t n = matrix.size();
 
   using std::pow;
   for (std::size_t i = 0; i < n; ++i) {
