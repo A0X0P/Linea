@@ -8,15 +8,14 @@
 #include "Matrix.hpp"
 #include <cmath>
 #include <stdexcept>
-#include <string>
 
 namespace Linea {
 
 // Element-wise sine
 template <RealType N> Matrix<N> sin(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::sin;
@@ -29,8 +28,8 @@ template <RealType N> Matrix<N> sin(const Matrix<N> &matrix) {
 // Element-wise cosine
 template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::cos;
@@ -43,18 +42,15 @@ template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
 // Element-wise tangent
 template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::cos;
   using std::tan;
   constexpr N eps = N(1e-12);
   for (std::size_t i = 0; i < n; ++i) {
-    if (std::abs(cos(a[i])) < eps) {
-      throw std::domain_error("tan undefined for element " +
-                              std::to_string(a[i]));
-    }
+
     out[i] = tan(a[i]);
   }
   return result;
@@ -63,16 +59,13 @@ template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
 // Element-wise square root
 template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::sqrt;
   for (std::size_t i = 0; i < n; ++i) {
-    if (a[i] < N{0}) {
-      throw std::domain_error("sqrt undefined for element " +
-                              std::to_string(a[i]));
-    }
+
     out[i] = sqrt(a[i]);
   }
   return result;
@@ -81,16 +74,13 @@ template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
 // Element-wise natural logarithm
 template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::log;
   for (std::size_t i = 0; i < n; ++i) {
-    if (a[i] <= N{0}) {
-      throw std::domain_error("log undefined for element " +
-                              std::to_string(a[i]));
-    }
+
     out[i] = log(a[i]);
   }
   return result;
@@ -99,8 +89,8 @@ template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
 // Element-wise exponential
 template <RealType N> Matrix<N> exp(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::exp;
@@ -121,8 +111,8 @@ template <IntegralType U> Matrix<U> pow(const Matrix<U> &matrix, int exponent) {
     return result;
   }
   Matrix<U> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   for (std::size_t i = 0; i < n; ++i) {
@@ -134,8 +124,8 @@ template <IntegralType U> Matrix<U> pow(const Matrix<U> &matrix, int exponent) {
 // Element-wise power (real type)
 template <RealType U> Matrix<U> pow(const Matrix<U> &matrix, U exponent) {
   Matrix<U> result(matrix.nrows(), matrix.ncols());
-  auto *out = result.data.data();
-  const auto *a = matrix.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.data.size();
 
   using std::pow;

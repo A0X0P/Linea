@@ -54,7 +54,7 @@ template <NumericType M> bool Matrix<M>::square() const noexcept {
 
 // Singular
 template <NumericType M> bool Matrix<M>::singular() const noexcept {
-  return Rank() < row;
+  return rank() < row;
 }
 
 // Trace
@@ -64,7 +64,7 @@ template <NumericType M> M Matrix<M>::trace() const {
   }
 
   const std::size_t n = row;
-  const auto *base = data.data();
+  const auto *RESTRICT base = this->raw();
   M trace_value = M{0};
 
   for (std::size_t i = 0; i < n; ++i) {
@@ -81,28 +81,35 @@ template <NumericType M> Vector<M> Matrix<M>::diagonal(Diagonal type) const {
   }
 
   const std::size_t n = row;
-  const auto *base = data.data();
+  const auto *RESTRICT base = this->raw();
 
   Vector<M> _diagonal(n);
+  auto *RESTRICT diag = _diagonal.raw();
 
   const auto *p = (type == Diagonal::Major) ? base : base + (n - 1);
 
   const std::size_t stride = (type == Diagonal::Major) ? (n + 1) : (n - 1);
 
   for (std::size_t i = 0; i < n; ++i, p += stride) {
-    _diagonal[i] = *p;
+    diag[i] = *p;
   }
 
   return _diagonal;
 }
 
 // Transpose
-template <NumericType M> Matrix<M> Matrix<M>::Transpose() const {
+template <NumericType M> Matrix<M> Matrix<M>::transpose() const {
   Matrix<M> result(this->column, this->row);
 
-  for (std::size_t i = 0; i < this->row; ++i) {
-    for (std::size_t j = 0; j < this->column; ++j) {
-      result.data[j * this->row + i] = data[i * this->column + j];
+  const std::size_t m = row;
+  const std::size_t n = column;
+
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+
+  for (std::size_t i = 0; i < m; ++i) {
+    for (std::size_t j = 0; j < n; ++j) {
+      out[j * m + i] = a[i * n + j];
     }
   }
 
@@ -111,7 +118,7 @@ template <NumericType M> Matrix<M> Matrix<M>::Transpose() const {
 
 // Rank
 template <NumericType M>
-std::size_t Matrix<M>::Rank() const
+std::size_t Matrix<M>::rank() const
   requires RealType<M>
 {
   return Linea::Decompositions::LU<M>(*this).rank();
@@ -119,7 +126,7 @@ std::size_t Matrix<M>::Rank() const
 
 // Reshape
 template <NumericType M>
-Matrix<M> Matrix<M>::Reshape(std::size_t nrow, std::size_t ncol) const {
+Matrix<M> Matrix<M>::reshape(std::size_t nrow, std::size_t ncol) const {
   const std::size_t reshape_size = nrow * ncol;
 
   if (reshape_size != data.size()) {
@@ -127,8 +134,10 @@ Matrix<M> Matrix<M>::Reshape(std::size_t nrow, std::size_t ncol) const {
         "No possible reshape exist for this combination.");
   }
   Matrix<M> result(nrow, ncol);
-  auto *out = result.data.data();
-  auto *in = data.data();
+
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT in = this->raw();
+
   for (std::size_t i = 0; i < reshape_size; ++i) {
     out[i] = in[i];
   }
@@ -151,16 +160,19 @@ Matrix<M> Matrix<M>::subMatrix(std::size_t row_idx, std::size_t col_idx) const {
 
   Matrix<M> sub_matrix(row - 1, column - 1);
 
-  const M *a = data.data();
-  M *out = sub_matrix.data.data();
+  const std::size_t m = row;
+  const std::size_t n = column;
 
-  for (std::size_t i = 0; i < row; ++i) {
+  auto *RESTRICT out = sub_matrix.raw();
+  const auto *RESTRICT a = this->raw();
+
+  for (std::size_t i = 0; i < m; ++i) {
     if (i == row_idx)
       continue;
 
-    const M *row_ptr = a + i * column;
+    const M *RESTRICT row_ptr = a + i * column;
 
-    for (std::size_t j = 0; j < column; ++j) {
+    for (std::size_t j = 0; j < n; ++j) {
       if (j == col_idx)
         continue;
       *out++ = row_ptr[j];
@@ -179,9 +191,15 @@ Matrix<M> Matrix<M>::block(std::size_t row, std::size_t col, std::size_t nrows,
   }
 
   Matrix<M> result(nrows, ncols);
+
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+
   for (std::size_t i = 0; i < nrows; ++i) {
+    const auto R = row + i;
     for (std::size_t j = 0; j < ncols; ++j) {
-      result(i, j) = (*this)(row + i, col + j);
+      const auto C = col + j;
+      out[i * ncols + j] = a[R * column + C];
     }
   }
   return result;
@@ -209,9 +227,11 @@ template <NumericType M> Matrix<M> Matrix<M>::cofactor_matrix() const {
     throw std::invalid_argument("Cofactor matrix requires a square matrix.");
   }
   Matrix<M> result(row, column);
+  auto *RESTRICT out = result.raw();
+
   for (std::size_t i = 0; i < row; ++i) {
     for (std::size_t j = 0; j < column; ++j) {
-      result(i, j) = cofactor(i, j);
+      out[i * column + j] = cofactor(i, j);
     }
   }
   return result;
@@ -219,7 +239,7 @@ template <NumericType M> Matrix<M> Matrix<M>::cofactor_matrix() const {
 
 // Adjoint
 template <NumericType M> Matrix<M> Matrix<M>::adjoint() const {
-  return cofactor_matrix().Transpose();
+  return cofactor_matrix().transpose();
 }
 
 // Determinant
@@ -233,7 +253,7 @@ M Matrix<M>::determinant() const
 
   Linea::Decompositions::LU<M> lu(*this);
   Matrix<M> U = lu.U();
-  const M *u_ptr = U.raw();
+  const M *RESTRICT u_ptr = U.raw();
   const std::size_t R = row;
 
   if (lu.rank() < R)
@@ -248,7 +268,7 @@ M Matrix<M>::determinant() const
 
 // Inverse
 template <NumericType M>
-Matrix<M> Matrix<M>::Inverse() const
+Matrix<M> Matrix<M>::inverse() const
   requires RealType<M>
 {
 
@@ -265,7 +285,7 @@ Matrix<M> Matrix<M>::Inverse() const
   auto U = lu.U();
 
   Matrix<M> inv(n, n);
-  M *invr = inv.raw();
+  M *RESTRICT invr = inv.raw();
 
   for (std::size_t i = 0; i < n; ++i) {
     Vector<M> e(n, M{});
@@ -274,8 +294,10 @@ Matrix<M> Matrix<M>::Inverse() const
     Vector<M> y = forward_substitution(L, e, lu.permutation());
     Vector<M> x = backward_substitution(U, y);
 
+    const M *RESTRICT x_ptr = x.raw();
+
     for (std::size_t j = 0; j < n; ++j)
-      invr[j * n + i] = x[j];
+      invr[j * n + i] = x_ptr[j];
   }
 
   return inv;
@@ -310,12 +332,13 @@ Matrix<M> Matrix<M>::solve(const Matrix<M> &B) const
   const std::size_t m = B.ncols();
 
   Matrix<M> X(n, m);
-  M *X_ptr = X.raw();
-  const M *other_ptr = B.raw();
+  M *RESTRICT X_ptr = X.raw();
+  const M *RESTRICT other_ptr = B.raw();
+
+  Vector<M> b(n);
+  M *RESTRICT b_ptr = b.raw();
 
   for (std::size_t j = 0; j < m; ++j) {
-    Vector<M> b(n);
-    M *b_ptr = b.raw();
 
     for (std::size_t i = 0; i < n; ++i)
       b_ptr[i] = other_ptr[i * m + j];
@@ -359,10 +382,13 @@ double Matrix<M>::norm(MatrixNorm type, std::size_t max_iter) const {
 
 template <NumericType M> double Matrix<M>::norm_1() const {
   double max_sum = 0;
+
+  auto *RESTRICT a = this->raw();
+
   for (std::size_t j{}; j < this->column; j++) {
     double sum = 0;
     for (std::size_t i{}; i < this->row; i++) {
-      sum += std::abs((*this)(i, j));
+      sum += std::abs(a[i * column + j]);
     }
     if (sum > max_sum) {
       max_sum = sum;
@@ -375,10 +401,12 @@ template <NumericType M> double Matrix<M>::norm_1() const {
 template <NumericType M> double Matrix<M>::norm_infinity() const {
   double max_sum = 0;
 
+  auto *RESTRICT a = this->raw();
+
   for (std::size_t i{}; i < this->row; i++) {
     double sum = 0;
     for (std::size_t j{}; j < this->column; j++) {
-      sum += std::abs((*this)(i, j));
+      sum += std::abs(a[i * column + j]);
     }
     if (sum > max_sum) {
       max_sum = sum;
@@ -400,7 +428,7 @@ double Matrix<M>::norm_spectral(std::size_t max_iter) const {
   //  power iteration for Large matrices
   if (std::min(m, n) > 64) {
 
-    const M *__restrict__ Ap = raw();
+    const M *RESTRICT Ap = raw();
 
     std::vector<M> x(n), y(m);
 
@@ -482,15 +510,16 @@ Vector<M> Matrix<M>::forward_substitution(const Matrix<M> &L,
   std::size_t n = L.nrows();
   const std::size_t k = L.ncols();
   Vector<M> y(n);
-  M const *Lp = L.raw();
+  auto *RESTRICT y_ptr = y.raw();
+  M const *RESTRICT Lp = L.raw();
   for (std::size_t i = 0; i < n; ++i) {
     M sum{};
 
     for (std::size_t j = 0; j < i; ++j) {
-      sum += Lp[i * k + j] * y[j];
+      sum += Lp[i * k + j] * y_ptr[j];
     }
 
-    y[i] = (b[piv[i]] - sum) / Lp[i * k + i];
+    y_ptr[i] = (b[piv[i]] - sum) / Lp[i * k + i];
   }
   return y;
 }
@@ -505,15 +534,16 @@ Vector<M> Matrix<M>::backward_substitution(const Matrix<M> &U,
   std::size_t n = U.row;
   std::size_t k = U.column;
   Vector<M> x(n);
-  M const *U_ptr = U.raw();
+  auto *RESTRICT x_ptr = x.raw();
+  M const *RESTRICT U_ptr = U.raw();
   for (std::size_t i = n; i-- > 0;) {
     M sum{};
 
     for (std::size_t j = i + 1; j < n; ++j) {
-      sum += U_ptr[i * k + j] * x[j];
+      sum += U_ptr[i * k + j] * x_ptr[j];
     }
 
-    x[i] = (y[i] - sum) / U_ptr[i * k + i];
+    x_ptr[i] = (y[i] - sum) / U_ptr[i * k + i];
   }
   return x;
 }

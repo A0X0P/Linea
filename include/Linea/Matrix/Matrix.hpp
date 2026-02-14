@@ -6,6 +6,7 @@
 #define LINEA_MATRIX_H
 
 #include "../Core/Concepts.hpp"
+#include "../Core/PlatformMacros.hpp"
 #include "../Core/Types.hpp"
 #include "../Core/Utilities.hpp"
 #include "../Vector/Vector.hpp"
@@ -73,44 +74,47 @@ public:
   explicit Matrix(const Matrix<U> &matrix)
       : row(matrix.row), column(matrix.column),
         data(matrix.row * matrix.column) {
+    auto *RESTRICT out = this->raw();
+    const auto *RESTRICT in = matrix.raw();
     for (std::size_t i = 0; i < data.size(); ++i) {
-      data.data()[i] = static_cast<M>(matrix.data.data()[i]);
+      out[i] = static_cast<M>(in[i]);
     }
   }
-  // Destructor
-  ~Matrix() {}
 
   // Getters
   std::size_t nrows() const { return row; }
   std::size_t ncols() const { return column; }
 
-  Vector<M> getRow(std::size_t row_index) const {
+  Vector<M> get_row(std::size_t row_index) const {
     if (row_index >= row) {
       throw std::out_of_range("Row index out of range");
     }
 
     Vector<M> result(column);
-    std::copy(data.begin() + row_index * column,
-              data.begin() + (row_index + 1) * column, result.begin());
+    const auto *RESTRICT in = raw() + row_index * column;
+    auto *RESTRICT out = result.raw();
+    std::copy(in, in + column, out);
     return result;
   }
 
-  Vector<M> getColumn(std::size_t column_index) const {
+  Vector<M> get_column(std::size_t column_index) const {
     if (column_index >= column) {
       throw std::out_of_range("Column index out of range");
     }
     Vector<M> result(row);
 
+    auto *RESTRICT out = result.raw();
+    const auto *RESTRICT in = this->raw();
     for (std::size_t j = 0; j < row; ++j) {
-      result[j] = data.at(j * column + column_index);
+      out[j] = in[j * column + column_index];
     }
 
     return result;
   }
 
-  const std::vector<M> &getdata() const & { return data; }
+  const std::vector<M> &data_ref() const & { return data; }
 
-  void setRow(std::size_t row_index, const Vector<M> &other) {
+  void set_row(std::size_t row_index, const Vector<M> &other) {
     if (row_index >= row) {
       throw std::out_of_range("Row index out of range");
     }
@@ -118,12 +122,14 @@ public:
       throw std::invalid_argument("Row size mismatch");
     }
 
+    auto *RESTRICT out = this->raw();
+    const auto *RESTRICT in = other.raw();
     for (std::size_t i = 0; i < column; ++i) {
-      data[row_index * column + i] = other[i];
+      out[row_index * column + i] = in[i];
     }
   }
 
-  void setColumn(std::size_t column_index, const Vector<M> &other) {
+  void set_column(std::size_t column_index, const Vector<M> &other) {
     if (column_index >= column) {
       throw std::out_of_range("Column index out of range");
     }
@@ -131,8 +137,10 @@ public:
       throw std::invalid_argument("Column size mismatch");
     }
 
+    auto *RESTRICT out = this->raw();
+    const auto *RESTRICT in = other.raw();
     for (std::size_t i = 0; i < row; ++i) {
-      data[i * column + column_index] = other[i];
+      out[i * column + column_index] = in[i];
     }
   }
 
@@ -190,9 +198,9 @@ public:
     Matrix<M> result(row, column + other.column);
 
     for (std::size_t i = 0; i < row; ++i) {
-      const M *row_a = data.data() + i * column;
-      const M *row_b = other.data.data() + i * other.column;
-      M *row_out = result.data.data() + i * result.column;
+      const M *RESTRICT row_a = data.data() + i * column;
+      const M *RESTRICT row_b = other.data.data() + i * other.column;
+      M *RESTRICT row_out = result.data.data() + i * result.column;
 
       std::copy(row_a, row_a + column, row_out);
       std::copy(row_b, row_b + other.column, row_out + column);
@@ -201,30 +209,31 @@ public:
   }
 
   // Static Methods
-  static Matrix<M> Identity(std::size_t row_column) {
+  static Matrix<M> identity(std::size_t row_column) {
     Matrix<M> I(row_column, row_column);
-
+    auto *RESTRICT out = I.raw();
     for (std::size_t i = 0; i < row_column; ++i) {
-      I.data[i * row_column + i] = M{1};
+      out[i * row_column + i] = M{1};
     }
 
     return I;
   }
 
-  static Matrix<M> Zeros(std::size_t row, std::size_t column) {
+  static Matrix<M> zeros(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{0});
   }
 
-  static Matrix<M> Ones(std::size_t row, std::size_t column) {
+  static Matrix<M> ones(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{1});
   }
 
-  static Matrix<M> rand_fill(std::size_t row, std::size_t column, M min_range,
-                             M max_range) {
+  static Matrix<M> random(std::size_t row, std::size_t column, M min_range,
+                          M max_range) {
     auto low = std::min(min_range, max_range);
     auto high = std::max(min_range, max_range);
 
     Matrix<M> result(row, column);
+    auto *RESTRICT out = result.raw();
     static thread_local std::mt19937 engine(std::random_device{}());
 
     if constexpr (std::is_integral_v<M>) {
@@ -232,7 +241,7 @@ public:
 
       for (std::size_t i{}; i < row; ++i) {
         for (std::size_t j{}; j < column; ++j) {
-          result(i, j) = distribute(engine);
+          out[i * column + j] = distribute(engine);
         }
       }
 
@@ -240,7 +249,7 @@ public:
       std::uniform_real_distribution<M> distribute(low, high);
       for (std::size_t i{}; i < row; ++i) {
         for (std::size_t j{}; j < column; ++j) {
-          result(i, j) = distribute(engine);
+          out[i * column + j] = distribute(engine);
         }
       }
     }
@@ -268,9 +277,9 @@ public:
   template <NumericType T>
   Matrix<Numeric<M, T>> operator*(const Matrix<T> &other) const;
 
-  Matrix<M> Hadamard_product(const Matrix<M> &other) const;
+  Matrix<M> hadamard_product(const Matrix<M> &other) const;
   template <NumericType T>
-  Matrix<Numeric<T, M>> Hadamard_product(const Matrix<T> &other) const;
+  Matrix<Numeric<T, M>> hadamard_product(const Matrix<T> &other) const;
 
   Matrix<M> operator/(const Matrix<M> &other) const;
   template <NumericType T>
@@ -350,10 +359,10 @@ public:
 
   M trace() const;
   Vector<M> diagonal(Diagonal type = Diagonal::Major) const;
-  Matrix<M> Transpose() const;
-  std::size_t Rank() const
+  Matrix<M> transpose() const;
+  std::size_t rank() const
     requires RealType<M>;
-  Matrix<M> Reshape(std::size_t nrow, std::size_t ncol) const;
+  Matrix<M> reshape(std::size_t nrow, std::size_t ncol) const;
   Matrix<M> flatten() const;
   Matrix<M> subMatrix(std::size_t row_idx, std::size_t col_idx) const;
   Matrix<M> block(std::size_t row, std::size_t col, std::size_t nrows,
@@ -366,7 +375,7 @@ public:
 
   M determinant() const
     requires RealType<M>;
-  Matrix<M> Inverse() const
+  Matrix<M> inverse() const
     requires RealType<M>;
 
   Vector<M> solve(const Vector<M> &b) const

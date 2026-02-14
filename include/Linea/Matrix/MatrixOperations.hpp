@@ -43,9 +43,9 @@ Matrix<M> Matrix<M>::operator+(const Matrix<M> &other) const {
   }
   Matrix<M> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] + in[i];
   }
@@ -62,9 +62,9 @@ Matrix<Numeric<M, T>> Matrix<M>::operator+(const Matrix<T> &other) const {
   }
   Matrix<Numeric<M, T>> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] + in[i];
   }
@@ -80,9 +80,9 @@ Matrix<M> Matrix<M>::operator-(const Matrix<M> &other) const {
   }
   Matrix<M> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] - in[i];
   }
@@ -99,9 +99,9 @@ Matrix<Numeric<M, T>> Matrix<M>::operator-(const Matrix<T> &other) const {
   }
   Matrix<Numeric<M, T>> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] - in[i];
   }
@@ -112,8 +112,8 @@ Matrix<Numeric<M, T>> Matrix<M>::operator-(const Matrix<T> &other) const {
 template <NumericType M> Matrix<M> Matrix<M>::operator-() const {
   Matrix<M> result(row, column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
 
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = -a[i];
@@ -127,8 +127,8 @@ template <NumericType S>
 Matrix<Numeric<M, S>> Matrix<M>::operator*(S scalar) const {
   Matrix<Numeric<M, S>> result(row, column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
 
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] * scalar;
@@ -150,12 +150,21 @@ Matrix<M> Matrix<M>::operator*(const Matrix<M> &other) const {
   }
 
   Matrix<M> result(row, other.column);
+
+  const std::size_t m = row;
+  const std::size_t n = column;
+  const std::size_t p = other.ncols();
+
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
+
   M sum{};
-  for (std::size_t i = 0; i < row; ++i) {
-    for (std::size_t k = 0; k < other.row; ++k) {
-      sum = (*this)(i, k);
-      for (std::size_t j = 0; j < other.column; ++j) {
-        result(i, j) += sum * other(k, j);
+  for (std::size_t i = 0; i < m; ++i) {
+    for (std::size_t k = 0; k < n; ++k) {
+      sum = a[i * n + k];
+      for (std::size_t j = 0; j < p; ++j) {
+        out[i * p + j] += sum * b[k * p + j];
       }
     }
   }
@@ -171,12 +180,21 @@ Matrix<Numeric<M, T>> Matrix<M>::operator*(const Matrix<T> &other) const {
   }
 
   Matrix<Numeric<M, T>> result(row, other.column);
+
+  const std::size_t m = row;
+  const std::size_t n = column;
+  const std::size_t p = other.ncols();
+
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT b = other.raw();
+
   Numeric<M, T> sum{};
-  for (std::size_t i = 0; i < row; ++i) {
-    for (std::size_t k = 0; k < other.row; ++k) {
-      sum = (*this)(i, k);
-      for (std::size_t j = 0; j < other.column; ++j) {
-        result(i, j) += sum * other(k, j);
+  for (std::size_t i = 0; i < m; ++i) {
+    for (std::size_t k = 0; k < n; ++k) {
+      sum = a[i * n + k];
+      for (std::size_t j = 0; j < p; ++j) {
+        out[i * p + j] += sum * b[k * p + j];
       }
     }
   }
@@ -185,16 +203,16 @@ Matrix<Numeric<M, T>> Matrix<M>::operator*(const Matrix<T> &other) const {
 
 // Hadamard product (same type)
 template <NumericType M>
-Matrix<M> Matrix<M>::Hadamard_product(const Matrix<M> &other) const {
+Matrix<M> Matrix<M>::hadamard_product(const Matrix<M> &other) const {
   if ((this->row != other.row) || (this->column != other.column)) {
     throw std::invalid_argument(
         "Hadamard product requires identical dimensions.");
   }
   Matrix<M> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] * in[i];
   }
@@ -205,16 +223,16 @@ Matrix<M> Matrix<M>::Hadamard_product(const Matrix<M> &other) const {
 template <NumericType M>
 template <NumericType T>
 Matrix<Numeric<T, M>>
-Matrix<M>::Hadamard_product(const Matrix<T> &other) const {
+Matrix<M>::hadamard_product(const Matrix<T> &other) const {
   if ((this->row != other.row) || (this->column != other.column)) {
     throw std::invalid_argument(
         "Hadamard product requires identical dimensions.");
   }
   Matrix<Numeric<T, M>> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     out[i] = a[i] * in[i];
   }
@@ -230,9 +248,9 @@ Matrix<M> Matrix<M>::operator/(const Matrix<M> &other) const {
   }
   Matrix<M> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     if (in[i] == M{0}) {
       throw std::domain_error("Division by zero.");
@@ -252,9 +270,9 @@ Matrix<Numeric<T, M>> Matrix<M>::operator/(const Matrix<T> &other) const {
   }
   Matrix<Numeric<T, M>> result(this->row, this->column);
 
-  auto *out = result.data.data();
-  const auto *a = data.data();
-  const auto *in = other.data.data();
+  auto *RESTRICT out = result.raw();
+  const auto *RESTRICT a = this->raw();
+  const auto *RESTRICT in = other.raw();
   for (std::size_t i = 0; i < data.size(); ++i) {
     if (in[i] == T{0}) {
       throw std::domain_error("Division by zero.");
