@@ -199,14 +199,17 @@ public:
   const_reverse_iterator rend() const noexcept { return data.rend(); }
   const_reverse_iterator crend() const noexcept { return data.crend(); }
 
-  // Friends
+  // Free functions - declared here, defined in VectorMath.hpp
 
-  template <RealType N> friend Vector<N> sin(const Vector<N> &);
-  template <RealType N> friend Vector<N> cos(const Vector<N> &);
-  template <RealType N> friend Vector<N> tan(const Vector<N> &);
-  template <RealType N> friend Vector<N> sqrt(const Vector<N> &);
-  template <RealType N> friend Vector<N> log(const Vector<N> &);
-  template <RealType N> friend Vector<N> exp(const Vector<N> &);
+  template <RealType N> Vector<N> sin(const Vector<N> &);
+  template <RealType N> Vector<N> cos(const Vector<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Vector<N> tan(const Vector<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Vector<N> sqrt(const Vector<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Vector<N> log(const Vector<N> &);
+  template <RealType N> Vector<N> exp(const Vector<N> &);
 };
 
 // Implementation of Vector3D constructor that depends on Vector

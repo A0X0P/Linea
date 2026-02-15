@@ -398,18 +398,19 @@ private:
   Vector<M> backward_substitution(const Matrix<M> &U, const Vector<M> &y) const
     requires RealType<M>;
 
-  // Friend declarations
+  // Free functions declarations
 
-  template <RealType N> friend Matrix<N> sin(const Matrix<N> &);
-  template <RealType N> friend Matrix<N> cos(const Matrix<N> &);
-  template <RealType N> friend Matrix<N> tan(const Matrix<N> &);
-  template <RealType N> friend Matrix<N> sqrt(const Matrix<N> &);
-  template <RealType N> friend Matrix<N> log(const Matrix<N> &);
-  template <RealType N> friend Matrix<N> exp(const Matrix<N> &);
-  template <RealType U>
-  friend Matrix<U> pow(const Matrix<U> &matrix, U exponent);
-  template <IntegralType U>
-  friend Matrix<U> pow(const Matrix<U> &, int exponent);
+  template <RealType N> Matrix<N> sin(const Matrix<N> &);
+  template <RealType N> Matrix<N> cos(const Matrix<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Matrix<N> tan(const Matrix<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Matrix<N> sqrt(const Matrix<N> &);
+  template <DomainCheck Check = DomainCheck::Enable, RealType N>
+  Matrix<N> log(const Matrix<N> &);
+  template <RealType N> Matrix<N> exp(const Matrix<N> &);
+  template <RealType U> Matrix<U> pow(const Matrix<U> &matrix, U exponent);
+  template <IntegralType U> Matrix<U> pow(const Matrix<U> &, int exponent);
 };
 
 } // namespace Linea

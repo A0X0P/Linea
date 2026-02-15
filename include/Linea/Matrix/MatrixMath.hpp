@@ -8,6 +8,7 @@
 #include "Matrix.hpp"
 #include <cmath>
 #include <stdexcept>
+#include <string>
 
 namespace Linea {
 
@@ -40,7 +41,8 @@ template <RealType N> Matrix<N> cos(const Matrix<N> &matrix) {
 }
 
 // Element-wise tangent
-template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
+template <DomainCheck Check, RealType N>
+Matrix<N> tan(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
@@ -49,39 +51,69 @@ template <RealType N> Matrix<N> tan(const Matrix<N> &matrix) {
   using std::cos;
   using std::tan;
   constexpr N eps = N(1e-12);
-  for (std::size_t i = 0; i < n; ++i) {
 
-    out[i] = tan(a[i]);
+  if constexpr (Check == DomainCheck::Enable) {
+    for (std::size_t i = 0; i < n; ++i) {
+      if (std::abs(cos(a[i])) < eps)
+        throw std::domain_error("tan undefined for element " +
+                                std::to_string(i));
+      out[i] = tan(a[i]);
+    }
+  } else {
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = tan(a[i]);
+    }
   }
+
   return result;
 }
 
 // Element-wise square root
-template <RealType N> Matrix<N> sqrt(const Matrix<N> &matrix) {
+template <DomainCheck Check, RealType N>
+Matrix<N> sqrt(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.size();
 
   using std::sqrt;
-  for (std::size_t i = 0; i < n; ++i) {
 
-    out[i] = sqrt(a[i]);
+  if constexpr (Check == DomainCheck::Enable) {
+    for (std::size_t i = 0; i < n; ++i) {
+      if (a[i] < N{0})
+        throw std::domain_error("sqrt undefined for element " +
+                                std::to_string(i));
+      out[i] = sqrt(a[i]);
+    }
+  } else {
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = sqrt(a[i]);
+    }
   }
   return result;
 }
 
 // Element-wise natural logarithm
-template <RealType N> Matrix<N> log(const Matrix<N> &matrix) {
+template <DomainCheck Check, RealType N>
+Matrix<N> log(const Matrix<N> &matrix) {
   Matrix<N> result(matrix.nrows(), matrix.ncols());
   auto *RESTRICT out = result.raw();
   const auto *RESTRICT a = matrix.raw();
   const std::size_t n = matrix.size();
 
   using std::log;
-  for (std::size_t i = 0; i < n; ++i) {
 
-    out[i] = log(a[i]);
+  if constexpr (Check == DomainCheck::Enable) {
+    for (std::size_t i = 0; i < n; ++i) {
+      if (a[i] <= N{0})
+        throw std::domain_error("log undefined for element " +
+                                std::to_string(i));
+      out[i] = log(a[i]);
+    }
+  } else {
+    for (std::size_t i = 0; i < n; ++i) {
+      out[i] = log(a[i]);
+    }
   }
   return result;
 }
