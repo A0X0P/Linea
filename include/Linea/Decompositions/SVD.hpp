@@ -34,10 +34,13 @@ public:
                                      : Matrix<Tp>(m, k, Tp(0))),
         V_(mode == ComputeMode::Full ? Matrix<Tp>::identity(n)
                                      : Matrix<Tp>(n, k, Tp(0))) {
+
     if (mode == ComputeMode::Thin) {
+      Tp *RESTRICT u_raw = U_.raw();
+      Tp *RESTRICT v_raw = V_.raw();
       for (std::size_t i = 0; i < k; ++i) {
-        U_(i, i) = Tp(1);
-        V_(i, i) = Tp(1);
+        u_raw[i * m + i] = Tp(1);
+        v_raw[i * n + i] = Tp(1);
       }
     }
 
@@ -52,10 +55,11 @@ public:
   const Matrix<Tp> &V() const noexcept { return V_; }
 
   std::size_t rank(Tp eps = Tp(1e-12)) const {
-    Tp smax = *std::max_element(d.begin(), d.end());
+    Tp smax = *std::max_element(d.raw(), d.raw() + k);
     std::size_t r = 0;
-    for (auto s : d)
-      if (s > eps * smax)
+    const Tp *RESTRICT d_raw = d.raw();
+    for (std::size_t i = 0; i < k; ++i)
+      if (d_raw[i] > eps * smax)
         ++r;
     return r;
   }
@@ -63,10 +67,11 @@ public:
   Tp condition_number(Tp eps = Tp(1e-12)) const {
     Tp smax = Tp(0);
     Tp smin = std::numeric_limits<Tp>::max();
-    for (auto s : d) {
-      if (s > eps) {
-        smax = std::max(smax, s);
-        smin = std::min(smin, s);
+    const Tp *RESTRICT d_raw = d.raw();
+    for (std::size_t i = 0; i < k; ++i) {
+      if (d_raw[i] > eps) {
+        smax = std::max(smax, d_raw[i]);
+        smin = std::min(smin, d_raw[i]);
       }
     }
     return (smin == Tp(0)) ? std::numeric_limits<Tp>::infinity() : smax / smin;
@@ -74,22 +79,23 @@ public:
 
   Matrix<Tp> pseudoinverse(Tp eps = Tp(1e-12)) const {
     Matrix<Tp> Splus(n, m, Tp(0));
-    Tp smax = *std::max_element(d.begin(), d.end());
+    Tp smax = *std::max_element(d.raw(), d.raw() + k);
+    Tp *RESTRICT s_raw = Splus.raw();
+    const Tp *RESTRICT d_raw = d.raw();
 
     for (std::size_t i = 0; i < k; ++i)
-      if (d[i] > eps * smax)
-        Splus(i, i) = Tp(1) / d[i];
+      if (d_raw[i] > eps * smax)
+        s_raw[i * n + i] = Tp(1) / d_raw[i];
 
     return V_ * Splus * U_.transpose();
   }
 
 private:
-  // ------------------------------------------------
-  // Stable Householder Bidiagonalization
-  // ------------------------------------------------
+  //  Householder Bidiagonalization (
 
   void bidiagonalize(const Matrix<Tp> &A) {
     Matrix<Tp> B = A;
+    Tp *RESTRICT B_raw = B.raw();
 
     for (std::size_t i = 0; i < k; ++i) {
       householder_left(B, i);
@@ -103,12 +109,20 @@ private:
     }
   }
 
-  void householder_left(Matrix<Tp> &B, std::size_t i) {
-    Tp sigma = 0;
-    for (std::size_t r = i + 1; r < m; ++r)
-      sigma += B(r, i) * B(r, i);
+  // Householder Left
 
-    Tp alpha = B(i, i);
+  void householder_left(Matrix<Tp> &B, std::size_t i) {
+    Tp *RESTRICT B_raw = B.raw();
+    Tp *RESTRICT U_raw = U_.raw();
+
+    // ---- compute sigma (column i, rows i+1:m)
+    Tp sigma = 0;
+    for (std::size_t r = i + 1; r < m; ++r) {
+      Tp val = B_raw[r * n + i];
+      sigma += val * val;
+    }
+
+    Tp alpha = B_raw[i * n + i];
     if (sigma == Tp(0) && alpha >= Tp(0))
       return;
 
@@ -116,41 +130,65 @@ private:
     Tp beta = (alpha <= 0) ? norm : -norm;
     Tp tau = (beta - alpha) / beta;
 
+    // ---- build v
     Vector<Tp> v(m, Tp(0));
-    v[i] = 1;
-    for (std::size_t r = i + 1; r < m; ++r)
-      v[r] = B(r, i) / (alpha - beta);
+    Tp *RESTRICT v_raw = v.raw();
 
-    B(i, i) = beta;
-    for (std::size_t r = i + 1; r < m; ++r)
-      B(r, i) = 0;
+    v_raw[i] = 1;
+    Tp denom = alpha - beta;
 
+    for (std::size_t r = i + 1; r < m; ++r)
+      v_raw[r] = B_raw[r * n + i] / denom;
+
+    B_raw[i * n + i] = beta;
+    for (std::size_t r = i + 1; r < m; ++r)
+      B_raw[r * n + i] = 0;
+
+    // ---- Apply reflector to B (columns i+1:n)
     for (std::size_t j = i + 1; j < n; ++j) {
       Tp w = 0;
+
+      // dot(v, column j)
       for (std::size_t r = i; r < m; ++r)
-        w += v[r] * B(r, j);
+        w += v_raw[r] * B_raw[r * n + j];
+
       w *= tau;
+
+      // rank-1 update
       for (std::size_t r = i; r < m; ++r)
-        B(r, j) -= v[r] * w;
+        B_raw[r * n + j] -= v_raw[r] * w;
     }
 
-    // accumulate U
-    for (std::size_t j = 0; j < m; ++j) {
+    // ---- Accumulate into U
+    std::size_t Ucols = (mode == ComputeMode::Full) ? m : k;
+
+    for (std::size_t j = 0; j < Ucols; ++j) {
       Tp w = 0;
+
       for (std::size_t r = i; r < m; ++r)
-        w += v[r] * U_(r, j);
+        w += v_raw[r] * U_raw[r * m + j];
+
       w *= tau;
+
       for (std::size_t r = i; r < m; ++r)
-        U_(r, j) -= v[r] * w;
+        U_raw[r * m + j] -= v_raw[r] * w;
     }
   }
 
-  void householder_right(Matrix<Tp> &B, std::size_t i) {
-    Tp sigma = 0;
-    for (std::size_t c = i + 2; c < n; ++c)
-      sigma += B(i, c) * B(i, c);
+  // Householder Right
 
-    Tp alpha = B(i, i + 1);
+  void householder_right(Matrix<Tp> &B, std::size_t i) {
+    Tp *RESTRICT B_raw = B.raw();
+    Tp *RESTRICT V_raw = V_.raw();
+
+    // ---- compute sigma (row i, cols i+2:n)
+    Tp sigma = 0;
+    for (std::size_t c = i + 2; c < n; ++c) {
+      Tp val = B_raw[i * n + c];
+      sigma += val * val;
+    }
+
+    Tp alpha = B_raw[i * n + i + 1];
     if (sigma == Tp(0) && alpha >= Tp(0))
       return;
 
@@ -159,45 +197,60 @@ private:
     Tp tau = (beta - alpha) / beta;
 
     Vector<Tp> v(n, Tp(0));
-    v[i + 1] = 1;
-    for (std::size_t c = i + 2; c < n; ++c)
-      v[c] = B(i, c) / (alpha - beta);
+    Tp *RESTRICT v_raw = v.raw();
 
-    B(i, i + 1) = beta;
-    for (std::size_t c = i + 2; c < n; ++c)
-      B(i, c) = 0;
+    v_raw[i + 1] = 1;
+    Tp denom = alpha - beta;
 
+    for (std::size_t c = i + 2; c < n; ++c)
+      v_raw[c] = B_raw[i * n + c] / denom;
+
+    B_raw[i * n + i + 1] = beta;
+    for (std::size_t c = i + 2; c < n; ++c)
+      B_raw[i * n + c] = 0;
+
+    // ---- Apply reflector to B (rows i+1:m)
     for (std::size_t r = i + 1; r < m; ++r) {
       Tp w = 0;
+
       for (std::size_t c = i + 1; c < n; ++c)
-        w += B(r, c) * v[c];
+        w += B_raw[r * n + c] * v_raw[c];
+
       w *= tau;
+
       for (std::size_t c = i + 1; c < n; ++c)
-        B(r, c) -= w * v[c];
+        B_raw[r * n + c] -= w * v_raw[c];
     }
 
-    for (std::size_t r = 0; r < n; ++r) {
+    // ---- Accumulate into V
+    std::size_t Vcols = (mode == ComputeMode::Full) ? n : k;
+
+    for (std::size_t r = 0; r < Vcols; ++r) {
       Tp w = 0;
+
       for (std::size_t c = i + 1; c < n; ++c)
-        w += V_(r, c) * v[c];
+        w += V_raw[r * n + c] * v_raw[c];
+
       w *= tau;
+
       for (std::size_t c = i + 1; c < n; ++c)
-        V_(r, c) -= w * v[c];
+        V_raw[r * n + c] -= w * v_raw[c];
     }
   }
 
-  // ------------------------------------------------
   // Golub–Kahan Implicit QR Iteration
-  // ------------------------------------------------
 
   void iterate() {
     for (std::size_t iter = 0; iter < maxIter; ++iter) {
       bool converged = true;
+      Tp *RESTRICT e_raw = e.raw();
+      Tp *RESTRICT d_raw = d.raw();
 
       for (std::size_t i = 0; i + 1 < k; ++i) {
-        if (std::abs(e[i]) <= tol * (std::abs(d[i]) + std::abs(d[i + 1])))
-          e[i] = Tp(0);
-        if (e[i] != Tp(0))
+        if (std::abs(e_raw[i]) <=
+            tol * (std::abs(d_raw[i]) + std::abs(d_raw[i + 1])))
+          e_raw[i] = Tp(0);
+        if (e_raw[i] != Tp(0))
           converged = false;
       }
 
@@ -205,60 +258,59 @@ private:
         return;
 
       std::size_t l = 0;
-      while (l < k - 1 && e[l] == Tp(0))
+      while (l < k - 1 && e_raw[l] == Tp(0))
         ++l;
       std::size_t end = l + 1;
-      while (end < k - 1 && e[end] != Tp(0))
+      while (end < k - 1 && e_raw[end] != Tp(0))
         ++end;
       ++end;
 
       Tp mu = wilkinson_shift(end);
 
-      Tp x = d[l] * d[l] - mu;
-      Tp z = d[l] * e[l];
+      Tp x = d_raw[l] * d_raw[l] - mu;
+      Tp z = d_raw[l] * e_raw[l];
 
       for (std::size_t i = l; i < end - 1; ++i) {
         Tp cR, sR;
         givens(x, z, cR, sR);
 
-        Tp f = cR * d[i] + sR * e[i];
-        Tp g = -sR * d[i] + cR * e[i];
-        Tp h = sR * d[i + 1];
+        Tp f = cR * d_raw[i] + sR * e_raw[i];
+        Tp g = -sR * d_raw[i] + cR * e_raw[i];
+        Tp h = sR * d_raw[i + 1];
 
-        d[i] = f;
-        e[i] = g;
-        d[i + 1] = cR * d[i + 1];
+        d_raw[i] = f;
+        e_raw[i] = g;
+        d_raw[i + 1] = cR * d_raw[i + 1];
 
         if (i + 1 < end - 1) {
-          z = -sR * e[i + 1];
-          e[i + 1] = cR * e[i + 1];
+          z = -sR * e_raw[i + 1];
+          e_raw[i + 1] = cR * e_raw[i + 1];
         }
 
         apply_right_rotation(i, cR, sR);
-
         Tp cL, sL;
-        givens(d[i], h, cL, sL);
-
-        d[i] = cL * d[i] + sL * h;
-        d[i + 1] = -sL * d[i + 1];
-        e[i] = 0;
+        givens(d_raw[i], h, cL, sL);
+        d_raw[i] = cL * d_raw[i] + sL * h;
+        d_raw[i + 1] = -sL * d_raw[i + 1];
+        e_raw[i] = 0;
 
         if (i + 1 < end - 1) {
-          x = cL * e[i + 1];
-          e[i + 1] = sL * e[i + 1];
+          x = cL * e_raw[i + 1];
+          e_raw[i + 1] = sL * e_raw[i + 1];
         }
 
         apply_left_rotation(i, cL, sL);
       }
     }
-
     throw std::runtime_error("SVD failed to converge");
   }
 
   Tp wilkinson_shift(std::size_t end) const {
-    Tp dk = d[end - 1];
-    Tp dkm1 = d[end - 2];
-    Tp ekm1 = e[end - 2];
+    const Tp *RESTRICT d_raw = d.raw();
+    const Tp *RESTRICT e_raw = e.raw();
+    Tp dk = d_raw[end - 1];
+    Tp dkm1 = d_raw[end - 2];
+    Tp ekm1 = e_raw[end - 2];
 
     Tp a = dkm1 * dkm1 + ekm1 * ekm1;
     Tp c = dk * dk;
@@ -282,45 +334,58 @@ private:
     }
   }
 
-  void apply_right_rotation(std::size_t i, Tp c, Tp s) {
-    std::size_t cols = (mode == ComputeMode::Full) ? n : k;
-    for (std::size_t r = 0; r < cols; ++r) {
-      Tp x = V_(r, i);
-      Tp y = V_(r, i + 1);
-      V_(r, i) = c * x + s * y;
-      V_(r, i + 1) = -s * x + c * y;
+  // QR Iteration Rotations
+
+  void apply_left_rotation(std::size_t i, Tp c, Tp s) {
+    Tp *RESTRICT U_raw = U_.raw();
+    std::size_t cols = (mode == ComputeMode::Full) ? m : k;
+
+    for (std::size_t col = 0; col < cols; ++col) {
+      Tp x = U_raw[i * m + col];
+      Tp y = U_raw[(i + 1) * m + col];
+
+      U_raw[i * m + col] = c * x + s * y;
+      U_raw[(i + 1) * m + col] = -s * x + c * y;
     }
   }
 
-  void apply_left_rotation(std::size_t i, Tp c, Tp s) {
-    std::size_t cols = (mode == ComputeMode::Full) ? m : k;
-    for (std::size_t r = 0; r < cols; ++r) {
-      Tp x = U_(r, i);
-      Tp y = U_(r, i + 1);
-      U_(r, i) = c * x + s * y;
-      U_(r, i + 1) = -s * x + c * y;
+  void apply_right_rotation(std::size_t i, Tp c, Tp s) {
+    Tp *RESTRICT V_raw = V_.raw();
+    std::size_t cols = (mode == ComputeMode::Full) ? n : k;
+
+    for (std::size_t col = 0; col < cols; ++col) {
+      Tp x = V_raw[i * n + col];
+      Tp y = V_raw[(i + 1) * n + col];
+
+      V_raw[i * n + col] = c * x + s * y;
+      V_raw[(i + 1) * n + col] = -s * x + c * y;
     }
   }
 
   void enforce_positive() {
+    Tp *RESTRICT d_raw = d.raw();
+    Tp *RESTRICT V_raw = V_.raw();
     for (std::size_t i = 0; i < k; ++i) {
-      if (d[i] < 0) {
-        d[i] = -d[i];
+      if (d_raw[i] < 0) {
+        d_raw[i] = -d_raw[i];
         for (std::size_t r = 0; r < n; ++r)
-          V_(r, i) = -V_(r, i);
+          V_raw[r * n + i] = -V_raw[r * n + i];
       }
     }
   }
 
   void sort_descending() {
+    Tp *RESTRICT d_raw = d.raw();
+    Tp *RESTRICT U_raw = U_.raw();
+    Tp *RESTRICT V_raw = V_.raw();
     for (std::size_t i = 0; i < k; ++i) {
       std::size_t maxIdx = i;
       for (std::size_t j = i + 1; j < k; ++j)
-        if (d[j] > d[maxIdx])
+        if (d_raw[j] > d_raw[maxIdx])
           maxIdx = j;
 
       if (maxIdx != i) {
-        std::swap(d[i], d[maxIdx]);
+        std::swap(d_raw[i], d_raw[maxIdx]);
         U_.swap_column(i, maxIdx);
         V_.swap_column(i, maxIdx);
       }
@@ -328,6 +393,6 @@ private:
   }
 };
 
-}; // namespace Linea::Decompositions
+} // namespace Linea::Decompositions
 
 #endif
