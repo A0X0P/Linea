@@ -1,6 +1,24 @@
-// created by : A.N. Prosper
-// date : January 28th 2026
-// time : 16:21
+
+/**
+ * @file StreamOperations.hpp
+ * @author A.N. Prosper
+ * @date January 28th 2026
+ * @brief Stream output utilities for Matrix and Vector.
+ *
+ * Provides formatted output via:
+ *
+ *      display(std::ostream&, const Matrix<T>&, MatrixFormat)
+ *      display(std::ostream&, const Vector<T>&, VectorFormat)
+ *
+ * Design Goals:
+ *      - Non-intrusive (no operator<< override required)
+ *      - Formatting configurable per-call
+ *      - Stream state preservation
+ *
+ * Complexity:
+ *      Matrix: O(n*m)
+ *      Vector: O(n)
+ */
 
 #pragma once
 
@@ -14,9 +32,33 @@
 
 namespace Linea::IO {
 
+/**
+ * @brief Displays a matrix using configurable formatting.
+ *
+ * Format:
+ *      [ a11, a12, ... ]
+ *      [ a21, a22, ... ]
+ *
+ * If show_dimensions = true:
+ *      Prints matrix size before content.
+ *
+ * Stream Safety:
+ *      - Saves original flags and precision
+ *      - Restores them before returning
+ *
+ * @tparam F Numeric scalar type.
+ * @param os Output stream.
+ * @param matrix Matrix to display.
+ * @param fmt Formatting configuration.
+ * @return Reference to output stream.
+ *
+ * Time Complexity:
+ *      O(nrows * ncols)
+ */
+
 template <NumericType F>
 std::ostream &display(std::ostream &os, const Matrix<F> &matrix,
-                      MatrixFormat fmt = {}) {
+                      const MatrixFormat &fmt = {}) {
   auto flags = os.flags();
   auto prec = os.precision();
 
@@ -54,9 +96,33 @@ std::ostream &display(std::ostream &os, const Matrix<F> &matrix,
   return os;
 }
 
+/**
+ * @brief Displays a vector using configurable formatting.
+ *
+ * Horizontal mode:
+ *      [ v1, v2, v3 ]
+ *
+ * Vertical mode:
+ *      [ v1 ]
+ *      [ v2 ]
+ *      [ v3 ]
+ *
+ * Stream Safety:
+ *      Preserves original formatting state.
+ *
+ * @tparam F Numeric scalar type.
+ * @param os Output stream.
+ * @param vector Vector to display.
+ * @param fmt Formatting configuration.
+ * @return Reference to output stream.
+ *
+ * Time Complexity:
+ *      O(n)
+ */
+
 template <NumericType F>
 std::ostream &display(std::ostream &os, const Vector<F> &vector,
-                      VectorFormat fmt = {}) {
+                      const VectorFormat &fmt = {}) {
   auto flags = os.flags();
   auto prec = os.precision();
 
