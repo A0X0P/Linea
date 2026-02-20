@@ -1,6 +1,61 @@
-// created by : A.N. Prosper
-// date : january 25th 2026
-// time : 15:05
+/**
+ * @file MatrixUtilities.hpp
+ * @author A.N. Prosper
+ * @date January 25th 2026
+ * @brief High-level structural, algebraic, and numerical utilities for Matrix.
+ *
+ * @details
+ * This file implements structural inspection, matrix transformations,
+ * linear algebra operations, norm computations, and linear system solvers
+ * for the Matrix class.
+ *
+ * Functional categories:
+ *
+ * 1. Structural utilities
+ *    - shape(), size(), empty()
+ *    - square(), symmetric(), singular()
+ *
+ * 2. Structural transformations
+ *    - transpose()
+ *    - reshape()
+ *    - flatten()
+ *    - subMatrix()
+ *    - block()
+ *
+ * 3. Scalar invariants
+ *    - trace()
+ *    - determinant()
+ *    - rank()
+ *
+ * 4. Classical algebraic constructions
+ *    - minor()
+ *    - cofactor()
+ *    - cofactor_matrix()
+ *    - adjoint()
+ *    - inverse()
+ *
+ * 5. Linear system solvers
+ *    - solve(Vector)
+ *    - solve(Matrix)
+ *    - forward_substitution()
+ *    - backward_substitution()
+ *
+ * 6. Matrix norms
+ *    - Frobenius
+ *    - 1-norm
+ *    - Infinity norm
+ *    - Spectral norm (Power iteration / SVD hybrid)
+ *
+ * Implementation strategy:
+ * - LU decomposition is used for determinant, rank, inverse and solve.
+ * - Spectral norm uses power iteration for large matrices and SVD for smaller
+ * ones.
+ * - All operations assume row-major contiguous storage.
+ *
+ * Type constraints:
+ * - Operations requiring division or decomposition require RealType.
+ * - Spectral norm requires floating-point types.
+ */
 
 #ifndef LINEA_MATRIX_UTILITIES_H
 #define LINEA_MATRIX_UTILITIES_H
@@ -13,22 +68,58 @@
 
 namespace Linea {
 
-// Shape
+/**
+ * @brief Prints the matrix dimensions to stdout.
+ *
+ * Displays the shape in the format:
+ *     (rows, columns)
+ *
+ * @note Primarily intended for debugging or interactive inspection.
+ */
+
 template <NumericType M> void Matrix<M>::shape() const {
   std::cout << "(" << row << ", " << column << ")" << std::endl;
 }
 
-// Size
+/**
+ * @brief Returns total number of elements.
+ *
+ * Computes:
+ *     size = rows × columns
+ *
+ * @return Total element count.
+ */
+
 template <NumericType M> std::size_t Matrix<M>::size() const {
   return row * column;
 }
 
-// Empty
+/**
+ * @brief Checks whether matrix contains no elements.
+ *
+ * @return True if underlying storage is empty.
+ *
+ * @note Equivalent to data.empty().
+ */
+
 template <NumericType M> bool Matrix<M>::empty() const noexcept {
   return this->data.empty();
 }
 
-// Symmetric
+/**
+ * @brief Checks if matrix is symmetric.
+ *
+ * A matrix A is symmetric if:
+ *     A = Aᵀ
+ *
+ * Condition:
+ *     aᵢⱼ = aⱼᵢ
+ *
+ * @return True if square and symmetric.
+ *
+ * @note Only exact comparison is performed.
+ */
+
 template <NumericType M> bool Matrix<M>::symmetric() const noexcept {
   if (row != column)
     return false;
@@ -47,17 +138,40 @@ template <NumericType M> bool Matrix<M>::symmetric() const noexcept {
   return true;
 }
 
-// Square
+/**
+ * @brief Checks whether matrix is square.
+ *
+ * @return True if rows == columns.
+ */
+
 template <NumericType M> bool Matrix<M>::square() const noexcept {
   return this->row == this->column;
 }
 
-// Singular
+/**
+ * @brief Checks whether matrix is singular.
+ *
+ * A matrix is singular if:
+ *     rank(A) < n
+ *
+ * @return True if matrix is rank-deficient.
+ */
+
 template <NumericType M> bool Matrix<M>::singular() const noexcept {
   return rank() < row;
 }
 
-// Trace
+/**
+ * @brief Computes matrix trace.
+ *
+ * Definition:
+ *     tr(A) = Σ aᵢᵢ
+ *
+ * @return Sum of diagonal elements.
+ *
+ * @throws std::invalid_argument if matrix is not square.
+ */
+
 template <NumericType M> M Matrix<M>::trace() const {
   if (row != column) {
     throw std::invalid_argument("Matrix trace requires row == column.");
@@ -74,7 +188,21 @@ template <NumericType M> M Matrix<M>::trace() const {
   return trace_value;
 }
 
-// Diagonal
+/**
+ * @brief Extracts diagonal elements.
+ *
+ * For Major:
+ *     a₀₀, a₁₁, …, aₙₙ
+ *
+ * For Minor:
+ *     a₀,n-1, a₁,n-2, …
+ *
+ * @param type Diagonal::Major or Diagonal::Minor diagonal.
+ * @return Vector containing diagonal elements.
+ *
+ * @throws std::invalid_argument if matrix not square.
+ */
+
 template <NumericType M> Vector<M> Matrix<M>::diagonal(Diagonal type) const {
   if (row != column) {
     throw std::invalid_argument("Matrix diagonal requires row == column.");
@@ -97,7 +225,17 @@ template <NumericType M> Vector<M> Matrix<M>::diagonal(Diagonal type) const {
   return _diagonal;
 }
 
-// Transpose
+/**
+ * @brief Computes matrix transpose.
+ *
+ * Definition:
+ *     (Aᵀ)ᵢⱼ = Aⱼᵢ
+ *
+ * @return Transposed matrix.
+ *
+ * Complexity: O(mn)
+ */
+
 template <NumericType M> Matrix<M> Matrix<M>::transpose() const {
   Matrix<M> result(this->column, this->row);
 
@@ -116,7 +254,16 @@ template <NumericType M> Matrix<M> Matrix<M>::transpose() const {
   return result;
 }
 
-// Rank
+/**
+ * @brief Computes matrix rank using LU decomposition.
+ *
+ * rank(A) = number of non-zero pivots
+ *
+ * @return Matrix rank.
+ *
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 std::size_t Matrix<M>::rank() const
   requires RealType<M>
@@ -124,7 +271,20 @@ std::size_t Matrix<M>::rank() const
   return Linea::Decompositions::LU<M>(*this).rank();
 }
 
-// Reshape
+/**
+ * @brief Reshapes matrix without altering data ordering.
+ *
+ * Requires:
+ *     new_rows × new_cols = original_size
+ *
+ * @param nrow New row count.
+ * @param ncol New column count.
+ *
+ * @return Reshaped matrix.
+ *
+ * @throws std::invalid_argument if sizes mismatch.
+ */
+
 template <NumericType M>
 Matrix<M> Matrix<M>::reshape(std::size_t nrow, std::size_t ncol) const {
   const std::size_t reshape_size = nrow * ncol;
@@ -144,14 +304,33 @@ Matrix<M> Matrix<M>::reshape(std::size_t nrow, std::size_t ncol) const {
   return result;
 }
 
-// Flatten
+/**
+ * @brief Converts matrix into a 1 × N row matrix.
+ *
+ * Preserves row-major order.
+ *
+ * @return Flattened matrix.
+ */
+
 template <NumericType M> Matrix<M> Matrix<M>::flatten() const {
   Matrix<M> result(1, data.size());
   std::copy(data.begin(), data.end(), result.data.begin());
   return result;
 }
 
-// Submatrix
+/**
+ * @brief Returns submatrix by removing one row and one column.
+ *
+ * Used in minor computation.
+ *
+ * @param row_idx Row to remove.
+ * @param col_idx Column to remove.
+ *
+ * @return (n-1) × (n-1) matrix.
+ *
+ * @throws std::out_of_range if indices invalid.
+ */
+
 template <NumericType M>
 Matrix<M> Matrix<M>::subMatrix(std::size_t row_idx, std::size_t col_idx) const {
   if (row_idx >= row || col_idx >= column) {
@@ -182,7 +361,22 @@ Matrix<M> Matrix<M>::subMatrix(std::size_t row_idx, std::size_t col_idx) const {
   return sub_matrix;
 }
 
-// Block
+/**
+ * @brief Extracts rectangular block.
+ *
+ * Returns submatrix:
+ *     A[row:row+nrows, col:col+ncols]
+ *
+ * @param row Starting row.
+ * @param col Starting column.
+ * @param nrows Number of rows.
+ * @param ncols Number of columns.
+ *
+ * @return Extracted block.
+ *
+ * @throws std::out_of_range if block exceeds bounds.
+ */
+
 template <NumericType M>
 Matrix<M> Matrix<M>::block(std::size_t row, std::size_t col, std::size_t nrows,
                            std::size_t ncols) const {
@@ -205,7 +399,17 @@ Matrix<M> Matrix<M>::block(std::size_t row, std::size_t col, std::size_t nrows,
   return result;
 }
 
-// Minor
+/**
+ * @brief Computes matrix minor Mᵢⱼ.
+ *
+ * Definition:
+ *     Mᵢⱼ = det(A without row i and column j)
+ *
+ * @return Minor value.
+ *
+ * @throws std::invalid_argument if matrix not square.
+ */
+
 template <NumericType M>
 M Matrix<M>::minor(std::size_t row_idx, std::size_t col_idx) const {
   if (row != column) {
@@ -214,14 +418,32 @@ M Matrix<M>::minor(std::size_t row_idx, std::size_t col_idx) const {
   return subMatrix(row_idx, col_idx).determinant();
 }
 
-// Cofactor
+/**
+ * @brief Computes cofactor Cᵢⱼ.
+ *
+ * Definition:
+ *     Cᵢⱼ = (-1)^(i+j) Mᵢⱼ
+ *
+ * @return Cofactor value.
+ */
+
 template <NumericType M>
 M Matrix<M>::cofactor(std::size_t row_index, std::size_t column_index) const {
   M sign = ((row_index + column_index) % 2 ? -M{1} : M{1});
   return sign * minor(row_index, column_index);
 }
 
-// Cofactor matrix
+/**
+ * @brief Computes matrix of cofactors.
+ *
+ * Each entry:
+ *     Cᵢⱼ = (-1)^(i+j) Mᵢⱼ
+ *
+ * @return Cofactor matrix.
+ *
+ * @throws std::invalid_argument if not square.
+ */
+
 template <NumericType M> Matrix<M> Matrix<M>::cofactor_matrix() const {
   if (row != column) {
     throw std::invalid_argument("Cofactor matrix requires a square matrix.");
@@ -237,12 +459,34 @@ template <NumericType M> Matrix<M> Matrix<M>::cofactor_matrix() const {
   return result;
 }
 
-// Adjoint
+/**
+ * @brief Computes adjugate (classical adjoint).
+ *
+ * Definition:
+ *     adj(A) = Cᵀ
+ *
+ * @return Adjoint matrix.
+ */
+
 template <NumericType M> Matrix<M> Matrix<M>::adjoint() const {
   return cofactor_matrix().transpose();
 }
 
-// Determinant
+/**
+ * @brief Computes determinant via LU decomposition.
+ *
+ * If:
+ *     A = P L U
+ *
+ * Then:
+ *     det(A) = (-1)^{swaps} Π Uᵢᵢ
+ *
+ * @return Determinant value.
+ *
+ * @throws std::invalid_argument if not square.
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 M Matrix<M>::determinant() const
   requires RealType<M>
@@ -266,7 +510,21 @@ M Matrix<M>::determinant() const
   return (lu.swap_count() % 2 == 0) ? det : -det;
 }
 
-// Inverse
+/**
+ * @brief Computes matrix inverse using LU decomposition.
+ *
+ * Solves:
+ *     A X = I
+ *
+ * via forward and backward substitution.
+ *
+ * @return Inverse matrix.
+ *
+ * @throws std::invalid_argument if not square.
+ * @throws std::runtime_error if singular.
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 Matrix<M> Matrix<M>::inverse() const
   requires RealType<M>
@@ -303,7 +561,19 @@ Matrix<M> Matrix<M>::inverse() const
   return inv;
 }
 
-// Solve (vector)
+/**
+ * @brief Solves linear system A x = b.
+ *
+ * Uses LU factorization:
+ *     L y = P b
+ *     U x = y
+ *
+ * @param b Right-hand side vector.
+ * @return Solution vector x.
+ *
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 Vector<M> Matrix<M>::solve(const Vector<M> &b) const
   requires RealType<M>
@@ -319,7 +589,17 @@ Vector<M> Matrix<M>::solve(const Vector<M> &b) const
   return x;
 }
 
-// Solve (matrix)
+/**
+ * @brief Solves multiple linear systems A X = B.
+ *
+ * Each column of B is treated as independent RHS.
+ *
+ * @param B Right-hand side matrix.
+ * @return Solution matrix X.
+ *
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 Matrix<M> Matrix<M>::solve(const Matrix<M> &B) const
   requires RealType<M>
@@ -354,7 +634,15 @@ Matrix<M> Matrix<M>::solve(const Matrix<M> &B) const
   return X;
 }
 
-// Norms
+/**
+ * @brief Computes Frobenius norm.
+ *
+ * Definition:
+ *     ||A||_F = sqrt(Σ aᵢⱼ²)
+ *
+ * @return Frobenius norm.
+ */
+
 template <NumericType M> double Matrix<M>::norm() const {
   double sum = 0;
 
@@ -363,6 +651,21 @@ template <NumericType M> double Matrix<M>::norm() const {
   }
   return std::sqrt(sum);
 }
+
+/**
+ * @brief Computes selected matrix norm.
+ *
+ * Supported:
+ * - Frobenius
+ * - One norm
+ * - Infinity norm
+ * - Spectral norm
+ *
+ * @param type Norm type.
+ * @param max_iter Iterations for spectral power method.
+ *
+ * @return Norm value.
+ */
 
 template <NumericType M>
 double Matrix<M>::norm(MatrixNorm type, std::size_t max_iter) const {
@@ -379,6 +682,15 @@ double Matrix<M>::norm(MatrixNorm type, std::size_t max_iter) const {
     return norm();
   }
 }
+
+/**
+ * @brief Computes induced 1-norm.
+ *
+ * Definition:
+ *     ||A||₁ = max_j Σ_i |aᵢⱼ|
+ *
+ * @return Maximum absolute column sum.
+ */
 
 template <NumericType M> double Matrix<M>::norm_1() const {
   double max_sum = 0;
@@ -398,6 +710,15 @@ template <NumericType M> double Matrix<M>::norm_1() const {
   return max_sum;
 }
 
+/**
+ * @brief Computes induced infinity norm.
+ *
+ * Definition:
+ *     ||A||∞ = max_i Σ_j |aᵢⱼ|
+ *
+ * @return Maximum absolute row sum.
+ */
+
 template <NumericType M> double Matrix<M>::norm_infinity() const {
   double max_sum = 0;
 
@@ -415,6 +736,22 @@ template <NumericType M> double Matrix<M>::norm_infinity() const {
 
   return max_sum;
 }
+
+/**
+ * @brief Computes spectral norm.
+ *
+ * Definition:
+ *     ||A||₂ = largest singular value
+ *
+ * Strategy:
+ * - For large matrices: power iteration
+ * - For small matrices: exact SVD
+ *
+ * @param max_iter Maximum power iterations.
+ * @return Spectral norm.
+ *
+ * @requires Floating-point type.
+ */
 
 template <NumericType M>
 double Matrix<M>::norm_spectral(std::size_t max_iter) const {
@@ -500,7 +837,20 @@ double Matrix<M>::norm_spectral(std::size_t max_iter) const {
                            svd.singularValues().end());
 }
 
-// Forward substitution
+/**
+ * @brief Solves lower triangular system L y = P b.
+ *
+ * Used internally for LU solve.
+ *
+ * @param L Lower triangular matrix.
+ * @param b Right-hand side.
+ * @param piv Permutation vector.
+ *
+ * @return Solution vector y.
+ *
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 Vector<M> Matrix<M>::forward_substitution(const Matrix<M> &L,
                                           const Vector<M> &b,
@@ -524,7 +874,19 @@ Vector<M> Matrix<M>::forward_substitution(const Matrix<M> &L,
   return y;
 }
 
-// Backward substitution
+/**
+ * @brief Solves upper triangular system U x = y.
+ *
+ * Used internally for LU solve.
+ *
+ * @param U Upper triangular matrix.
+ * @param y Intermediate vector.
+ *
+ * @return Solution vector x.
+ *
+ * @requires RealType<M>
+ */
+
 template <NumericType M>
 Vector<M> Matrix<M>::backward_substitution(const Matrix<M> &U,
                                            const Vector<M> &y) const

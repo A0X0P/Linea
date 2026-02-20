@@ -1,6 +1,83 @@
-// created by : A.N. Prosper
-// date : December 18th 2025
-// time : 20:20
+
+/**
+ * @file Matrix.hpp
+ * @author A.N. Prosper
+ * @date December 18th 2025
+ * @brief Generic dense matrix container with linear algebra and numerical
+ * utilities.
+ *
+ * @details
+ * This file defines the class template Linea::Matrix<M>, a row-major,
+ * contiguous-storage dense matrix implementation constrained by
+ * the NumericType concept.
+ *
+ * The matrix supports:
+ * - Shape construction
+ * - Type-safe casting
+ * - Row and column extraction and mutation
+ * - Structural permutation (row/column swaps)
+ * - Vertical and horizontal concatenation
+ * - Statistical reductions (sum, mean, min, max)
+ * - Random matrix generation
+ * - Identity, zero, and ones constructors
+ * - Element-wise access
+ * - Iterator support
+ *
+ * Mathematical Representation:
+ *
+ * For a matrix A ∈ 𝔽^{m×n}:
+ *
+ *      A = [ a_{ij} ]
+ *
+ * Storage layout is row-major:
+ *
+ *      index(i, j) = i · n + j
+ *
+ * so that:
+ *
+ *      a_{ij} ↦ data[i * column + j]
+ *
+ * Memory Model:
+ * - Contiguous std::vector<M>
+ * - Row-major layout
+ * - Cache-friendly for row traversal
+ * - raw() provides direct pointer access
+ *
+ * Type Requirements:
+ * - M must satisfy NumericType
+ * - Certain operations require:
+ *      • RealType<M>
+ *      • IntegralType<M>
+ *
+ * Exception Safety:
+ * - Strong guarantee for constructors
+ * - Bounds-checked accessors throw std::out_of_range
+ * - Dimension mismatches throw std::invalid_argument
+ *
+ * Thread Safety:
+ * - Not inherently thread-safe
+ * - random() uses thread_local RNG
+ *
+ * Complexity Model:
+ * - Construction: O(m·n)
+ * - Row/column access: O(n) / O(m)
+ * - Concatenation: O(m·n)
+ * - Statistical reductions: O(m·n)
+ *
+ * Design Goals:
+ * - Deterministic performance
+ * - Zero hidden allocations beyond std::vector
+ * - SIMD-friendly contiguous layout
+ * - Clear mathematical semantics
+ *
+ * @note
+ * This is a dense matrix implementation. Sparse optimizations are not included.
+ *
+ * @warning
+ * The class does not enforce numerical stability in advanced operations
+ * (e.g., determinant, inverse). Stability depends on algorithmic
+ * implementations in associated utility headers.
+ */
 
 #ifndef LINEA_MATRIX_H
 #define LINEA_MATRIX_H
@@ -22,7 +99,178 @@
 
 namespace Linea {
 
-template <NumericType M> class LUFactor;
+/**
+ * @class Matrix
+ * @brief Dense, row-major matrix over a numeric scalar field.
+ *
+ * @tparam M Scalar type satisfying NumericType
+ *         (IntegralType ∪ RealType).
+ *
+ * @details
+ *
+ * Matrix<M> models a finite-dimensional rectangular array:
+ *
+ *      A ∈ 𝔽^{m×n}
+ *
+ * where:
+ *
+ *      𝔽 = ℤ  ∪  ℝ
+ *
+ * depending on the scalar type M.
+ *
+ * ---------------   Mathematical Model    ------------------
+ *
+ *
+ * A matrix A is defined as:
+ *
+ *      A = [ a_{ij} ]
+ *
+ * with:
+ *
+ *      0 ≤ i < m
+ *      0 ≤ j < n
+ *
+ * Element access obeys:
+ *
+ *      A(i, j) = a_{ij}
+ *
+ * Storage mapping:
+ *
+ *      a_{ij} ↦ data[i · n + j]
+ *
+ * ensuring a row-major contiguous layout.
+ *
+ * ---------------    Memory Representation    ------------------
+ *
+ * Internally:
+ *
+ *      std::vector<M> data;
+ *
+ * is used for storage.
+ *
+ * Properties:
+ * - Contiguous memory
+ * - No padding
+ * - No hidden allocations beyond std::vector
+ * - Stable address unless reallocated
+ *
+ * This layout provides:
+ * - Cache locality for row traversal
+ * - SIMD compatibility
+ * - O(1) raw pointer access via raw()
+ *
+ *
+ * ---------------    Dimensional Invariants    ------------------
+ *
+ * For all instances:
+ *
+ *      rows() ≥ 0
+ *      cols() ≥ 0
+ *      size() = rows() · cols()
+ *
+ * The following invariant always holds:
+ *
+ *      data.size() == rows() * cols()
+ *
+ * ---------------    Type Semantics    ------------------
+ *
+ *
+ * M must satisfy:
+ *
+ *      NumericType<M>
+ *
+ * Additional operations may require:
+ *
+ *      RealType<M>     (e.g., statistical mean, sqrt, etc.)
+ *      IntegralType<M> (e.g., integer exponentiation)
+ *
+ * No implicit narrowing conversions are performed.
+ *
+ * Casting between scalar types must be explicit via  the cast constructor
+ * Matrix<M>(const Matrix<U> &matrix).
+ *
+ * --------------    Complexity Guarantees    ------------------
+ *
+ *
+ * Construction:
+ *      O(m · n)
+ *
+ * Element access:
+ *      O(1)
+ *
+ * Row extraction:
+ *      O(n)
+ *
+ * Column extraction:
+ *      O(m)
+ *
+ * Concatenation:
+ *      O(m · n)
+ *
+ * Statistical reductions:
+ *      O(m · n)
+ *
+ *
+ * Exception Safety
+ *
+ *
+ * - Strong guarantee for constructors
+ * - Bounds-checked accessors throw std::out_of_range
+ * - Dimension mismatch throws std::invalid_argument
+ *
+ *
+ * ---------------   Iterator Semantics    ------------------
+ *
+ * Iterators are contiguous and satisfy:
+ *
+ *      RandomAccessIterator
+ *
+ * Traversal order matches row-major memory order.
+ *
+ *  ---------------   Thread Safety    ------------------
+ *
+ *
+ * - Distinct Matrix objects are thread-safe.
+ * - random() uses thread_local RNG for isolation.
+ *
+ *
+ *  ---------------   Algebraic Interpretation    ------------------
+ *
+ *
+ * Matrix<M> models a finite-dimensional module over M.
+ *
+ * If M ∈ ℝ:
+ *      Matrix<M> forms a vector space over ℝ.
+ *
+ * If M ∈ ℤ:
+ *      Matrix<M> forms a free ℤ-module.
+ *
+ * This class does NOT enforce:
+ * - Symmetry
+ * - Orthogonality
+ * - Triangular structure
+ * - Positive definiteness
+ *
+ * Such properties are algorithm-level invariants.
+ *
+ * ---------------   Design Goals    ------------------
+ *
+ *
+ * - Deterministic performance
+ * - Mathematical transparency
+ * - No hidden heap allocations
+ * - Explicit domain control
+ * - STL interoperability
+ *
+ *
+ * @note
+ * This is a dense matrix container.
+ *
+ * @warning
+ * Numerical stability is NOT guaranteed for higher-level operations
+ * such as determinant or inverse. Stability depends on algorithm
+ * implementation in higher-level utilities.
+ */
 
 template <NumericType M> class Matrix {
 
@@ -37,15 +285,59 @@ public:
 
   // Constructors
 
-  // shape-only initialization
+  /**
+   * shape-only initialization
+   * @brief Constructs a matrix with given dimensions.
+   *
+   * Allocates a matrix of size \f$ r \times c \f$ and initializes all elements
+   * to zero.
+   *
+   * @param row Number of rows.
+   * @param column Number of columns.
+   *
+   * @post All elements are value-initialized to \f$ M\{0\} \f$.
+   *
+   * @complexity O(r \cdot c)
+   */
+
   Matrix(std::size_t row, std::size_t column)
       : row(row), column(column), data(row * column, M{}) {}
 
-  // value-filled
+  /**
+   * value-filled
+   * @brief Constructs a matrix with given dimensions filled with a constant
+   * value.
+   *
+   * Creates a matrix:
+   * \f[
+   * A_{ij} = value
+   * \f]
+   *
+   * @param row Number of rows.
+   * @param column Number of columns.
+   * @param value Constant initialization value.
+   *
+   * @complexity O(r \cdot c)
+   */
   Matrix(std::size_t row, std::size_t column, M value)
       : row(row), column(column), data(row * column, value) {}
 
-  // data-only initialization
+  /**
+   * data-only initialization
+   * @brief Constructs a matrix from nested initializer lists.
+   *
+   * Example:
+   * @code
+   * Matrix<double> A{{1,2,3},{4,5,6}};
+   * @endcode
+   *
+   * @throws std::invalid_argument If:
+   * - The outer list is empty.
+   * - Any row is empty.
+   * - Rows have inconsistent sizes.
+   *
+   * @complexity O(r \cdot c)
+   */
   explicit Matrix(std::initializer_list<std::initializer_list<M>> list)
       : row(list.size()), column(0) {
     if (row == 0) {
@@ -69,7 +361,20 @@ public:
     }
   }
 
-  // casting
+  /**
+   * casting
+   * @brief Explicit casting constructor between different numeric matrix types.
+   *
+   * Performs element-wise static_cast:
+   * \f[
+   * A_{ij}^{(M)} = \text{static_cast<M>}(B_{ij}^{(U)})
+   * \f]
+   *
+   * @tparam U Source numeric type.
+   * @param matrix Input matrix.
+   *
+   * @complexity O(r \cdot c)
+   */
   template <NumericType U>
   explicit Matrix(const Matrix<U> &matrix)
       : row(matrix.row), column(matrix.column),
@@ -81,9 +386,33 @@ public:
     }
   }
 
-  // Getters
+  // Dimension Accessors
+
+  /**
+   * @brief Returns number of rows.
+   * @return Row count.
+   */
   std::size_t nrows() const { return row; }
+  /**
+   * @brief Returns number of columns.
+   * @return Column count.
+   */
   std::size_t ncols() const { return column; }
+
+  // Row / Column Access
+
+  /**
+   * @brief Returns a copy of a row vector.
+   *
+   * \f[
+   * v_j = A_{row\_index,j}
+   * \f]
+   *
+   * @param row_index Row index.
+   * @throws std::out_of_range If index is invalid.
+   *
+   * @complexity O(c)
+   */
 
   Vector<M> get_row(std::size_t row_index) const {
     if (row_index >= row) {
@@ -96,6 +425,19 @@ public:
     std::copy(in, in + column, out);
     return result;
   }
+
+  /**
+   * @brief Returns a copy of a column vector.
+   *
+   * \f[
+   * v_i = A_{i,column\_index}
+   * \f]
+   *
+   * @param column_index Column index.
+   * @throws std::out_of_range If index is invalid.
+   *
+   * @complexity O(r)
+   */
 
   Vector<M> get_column(std::size_t column_index) const {
     if (column_index >= column) {
@@ -112,7 +454,31 @@ public:
     return result;
   }
 
+  /**
+   * @brief Returns constant reference to underlying storage.
+   *
+   * Storage is contiguous in row-major order:
+   * \f[
+   * A_{ij} \mapsto data[i \cdot n_{cols} + j]
+   * \f]
+   *
+   * @return const std::vector<M>&
+   */
   const std::vector<M> &data_ref() const & { return data; }
+
+  // Row / Column Modification
+
+  /**
+   * @brief Replaces a row with a vector.
+   *
+   * @param row_index Row to replace.
+   * @param other Vector of matching column size.
+   *
+   * @throws std::out_of_range If index invalid.
+   * @throws std::invalid_argument If dimension mismatch.
+   *
+   * @complexity O(c)
+   */
 
   void set_row(std::size_t row_index, const Vector<M> &other) {
     if (row_index >= row) {
@@ -128,6 +494,18 @@ public:
       out[row_index * column + i] = in[i];
     }
   }
+
+  /**
+   * @brief Replaces a column with a vector.
+   *
+   * @param column_index Column to replace.
+   * @param other Vector of matching row size.
+   *
+   * @throws std::out_of_range If index invalid.
+   * @throws std::invalid_argument If dimension mismatch.
+   *
+   * @complexity O(r)
+   */
 
   void set_column(std::size_t column_index, const Vector<M> &other) {
     if (column_index >= column) {
@@ -145,6 +523,18 @@ public:
   }
 
   // Permutation operations
+
+  /**
+   * @brief Swaps two rows.
+   *
+   * @param row1 First row index.
+   * @param row2 Second row index.
+   *
+   * @throws std::out_of_range If index invalid.
+   *
+   * @complexity O(c)
+   */
+
   void swap_row(std::size_t row1, std::size_t row2) {
     if (row1 >= row || row2 >= row) {
       throw std::out_of_range("Row index out of range");
@@ -157,6 +547,17 @@ public:
                      data.begin() + (row1 + 1) * column,
                      data.begin() + row2 * column);
   }
+
+  /**
+   * @brief Swaps two columns.
+   *
+   * @param column1 First column index.
+   * @param column2 Second column index.
+   *
+   * @throws std::out_of_range If index invalid.
+   *
+   * @complexity O(r)
+   */
 
   void swap_column(std::size_t column1, std::size_t column2) {
     if (column1 >= column || column2 >= column) {
@@ -172,6 +573,30 @@ public:
   }
 
   // Concatenation
+
+  /**
+   * @brief Vertical concatenation.
+   *
+   * If:
+   * \f$ A \in \mathbb{R}^{m \times n} \f$
+   * and
+   * \f$ B \in \mathbb{R}^{k \times n} \f$
+   *
+   * then:
+   * \f[
+   * C =
+   * \begin{bmatrix}
+   * A \\
+   * B
+   * \end{bmatrix}
+   * \in \mathbb{R}^{(m+k)\times n}
+   * \f]
+   *
+   * @throws std::invalid_argument If column mismatch.
+   *
+   * @complexity O((m+k)n)
+   */
+
   Matrix<M> vstack(const Matrix<M> &other) const {
     if (column != other.column) {
       throw std::invalid_argument("vstack requires A.columns == B.columns");
@@ -189,6 +614,28 @@ public:
 
     return result;
   }
+
+  /**
+   * @brief Horizontal concatenation.
+   *
+   * If:
+   * \f$ A \in \mathbb{R}^{m \times n} \f$
+   * and
+   * \f$ B \in \mathbb{R}^{m \times k} \f$
+   *
+   * then:
+   * \f[
+   * C =
+   * \begin{bmatrix}
+   * A & B
+   * \end{bmatrix}
+   * \in \mathbb{R}^{m \times (n+k)}
+   * \f]
+   *
+   * @throws std::invalid_argument If row mismatch.
+   *
+   * @complexity O(m(n+k))
+   */
 
   Matrix<M> hstack(const Matrix<M> &other) const {
     if (row != other.row) {
@@ -208,7 +655,23 @@ public:
     return result;
   }
 
-  // Static Methods
+  // Static Constructors
+  /**
+   * @brief Constructs identity matrix.
+   *
+   * \f[
+   * I_{ij} =
+   * \begin{cases}
+   * 1 & i=j \\
+   * 0 & i \neq j
+   * \end{cases}
+   * \f]
+   *
+   * @param row_column Dimension.
+   *
+   * @return Identity matrix.
+   */
+
   static Matrix<M> identity(std::size_t row_column) {
     Matrix<M> I(row_column, row_column);
     auto *RESTRICT out = I.raw();
@@ -219,13 +682,34 @@ public:
     return I;
   }
 
+  /**
+   * @brief Constructs zero matrix.
+   */
   static Matrix<M> zeros(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{0});
   }
 
+  /**
+   * @brief Constructs matrix filled with ones.
+   */
+
   static Matrix<M> ones(std::size_t row, std::size_t column) {
     return Matrix<M>(row, column, M{1});
   }
+
+  /**
+   * @brief Constructs matrix with random values in [min_range, max_range].
+   *
+   * - Uses uniform_int_distribution for integral types.
+   * - Uses uniform_real_distribution for floating types.
+   *
+   * @param row Rows.
+   * @param column Columns.
+   * @param min_range Lower bound.
+   * @param max_range Upper bound.
+   *
+   * @complexity O(r \cdot c)
+   */
 
   static Matrix<M> random(std::size_t row, std::size_t column, M min_range,
                           M max_range) {
@@ -285,10 +769,47 @@ public:
   template <NumericType T>
   Matrix<Numeric<T, M>> operator/(const Matrix<T> &other) const;
 
+  // Element Access
+
+  /**
+   * @brief Element access (mutable).
+   *
+   * Accesses element:
+   * \f[
+   * A_{ij}
+   * \f]
+   *
+   * @param i Row index.
+   * @param j Column index.
+   *
+   * @return Reference to element.
+   */
+
   M &operator()(std::size_t i, std::size_t j);
+  /**
+   * @brief Element access (const).
+   *
+   * @param i Row index.
+   * @param j Column index.
+   *
+   * @return Const reference to element.
+   */
   const M &operator()(std::size_t i, std::size_t j) const;
 
+  // Raw Pointer Access
+
+  /**
+   * @brief Returns mutable raw pointer to contiguous storage.
+   *
+   * @return Pointer to first element.
+   */
+
   [[nodiscard]] inline M *raw() noexcept { return data.data(); }
+  /**
+   * @brief Returns const raw pointer to contiguous storage.
+   *
+   * @return Pointer to first element.
+   */
   [[nodiscard]] inline const M *raw() const noexcept { return data.data(); }
 
 public:
@@ -314,6 +835,17 @@ public:
   const_reverse_iterator crend() const { return data.crend(); }
 
   // Statistical Operations
+
+  /**
+   * @brief Computes sum of all elements.
+   *
+   * \f[
+   * \sum_{i,j} A_{ij}
+   * \f]
+   *
+   * @return Accumulated sum.
+   */
+
   template <IntegralType I = M> std::common_type_t<I, long long> sum() const {
     return std::accumulate(data.begin(), data.end(),
                            std::common_type_t<I, long long>{0});
@@ -322,6 +854,16 @@ public:
   template <RealType R = M> R sum() const {
     return std::accumulate(data.begin(), data.end(), R{0});
   }
+
+  /**
+   * @brief Computes arithmetic mean.
+   *
+   * \f[
+   * \mu = \frac{1}{N} \sum_{i,j} A_{ij}
+   * \f]
+   *
+   * @throws std::domain_error If matrix empty.
+   */
 
   template <IntegralType I = M> std::common_type_t<I, double> mean() const {
     if (data.empty())
@@ -335,6 +877,11 @@ public:
     return sum() / static_cast<R>(data.size());
   }
 
+  /**
+   * @brief Returns minimum element.
+   *
+   * @throws std::runtime_error If matrix empty.
+   */
   M min() const {
     if (data.empty()) {
       throw std::runtime_error("Cannot compute maximum of empty matrix");
@@ -342,6 +889,11 @@ public:
     return *std::min_element(data.begin(), data.end());
   }
 
+  /**
+   * @brief Returns maximum element.
+   *
+   * @throws std::runtime_error If matrix empty.
+   */
   M max() const {
     if (data.empty()) {
       throw std::runtime_error("Cannot compute maximum of empty matrix");
