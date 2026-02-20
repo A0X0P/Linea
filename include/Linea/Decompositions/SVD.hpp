@@ -1,6 +1,35 @@
-// created by : A.N. Prosper
-// date : January 24th 2026
-// time : 20:09
+
+/**
+ * @file SVD.hpp
+ * @author A.N. Prosper
+ * @date January 24th 2026
+ * @brief Singular Value Decomposition (SVD) implementation using
+ *        Householder bidiagonalization and Golub–Kahan implicit QR iteration.
+ *
+ * This file defines the Linea::Decompositions::SVD class template,
+ * which computes the Singular Value Decomposition of a real matrix:
+ *
+ *      A = U * Σ * Vᵀ
+ *
+ * where:
+ *   - U is an orthogonal m×m (Full) or m×k (Thin) matrix,
+ *   - Σ is a diagonal matrix containing singular values,
+ *   - V is an orthogonal n×n (Full) or n×k (Thin) matrix,
+ *   - k = min(m, n).
+ *
+ * The algorithm consists of:
+ *   1. Householder bidiagonalization
+ *   2. Golub–Kahan implicit QR iteration with Wilkinson shift
+ *   3. Post-processing (sign normalization and sorting)
+ *
+ * @tparam Tp Floating-point type satisfying RealType concept.
+ *
+ * @note Only real-valued matrices are supported.
+ * @note Singular values are sorted in descending order.
+ * @note Throws std::runtime_error if QR iteration fails to converge.
+ *
+ * @complexity
+ */
 
 #ifndef LINEA_SVD_HPP
 #define LINEA_SVD_HPP
@@ -14,6 +43,24 @@
 
 namespace Linea::Decompositions {
 
+/**
+ * @brief Singular Value Decomposition class.
+ *
+ * Computes the factorization:
+ *
+ *      A = U Σ Vᵀ
+ *
+ * using a numerically stable two-stage algorithm:
+ * - Householder reduction to bidiagonal form
+ * - Implicit QR iteration (Golub–Kahan)
+ *
+ * Supports both:
+ * - Full SVD  (U: m×m, V: n×n)
+ * - Thin SVD  (U: m×k, V: n×k)
+ *
+ * @tparam Tp Real floating-point type.
+ */
+
 template <RealType Tp> class SVD {
 private:
   std::size_t m, n, k;
@@ -26,6 +73,23 @@ private:
   Vector<Tp> e;
 
 public:
+  /**
+   * @brief Constructs and computes the SVD of matrix A.
+   *
+   * Immediately performs:
+   *   1. Bidiagonalization
+   *   2. QR iteration
+   *   3. Sign normalization
+   *   4. Sorting of singular values
+   *
+   * @param A        Input matrix (m × n).
+   * @param mode     ComputeMode::Full or ComputeMode::Thin (default: Thin).
+   * @param eps      Numerical tolerance for convergence.
+   * @param maxIters Maximum number of QR iterations.
+   *
+   * @throws std::runtime_error if QR iteration does not converge.
+   */
+
   SVD(const Matrix<Tp> &A, ComputeMode mode = ComputeMode::Thin,
       Tp eps = Tp(1e-12), std::size_t maxIters = 1000)
       : m(A.nrows()), n(A.ncols()), k(std::min(m, n)), tol(eps),
@@ -50,9 +114,40 @@ public:
     sort_descending();
   }
 
+  /**
+   * @brief Returns singular values.
+   *
+   * @return Reference to vector of singular values (size k).
+   */
+
   const Vector<Tp> &singularValues() const noexcept { return d; }
+
+  /**
+   * @brief Returns left singular vectors.
+   *
+   * @return Matrix U.
+   */
+
   const Matrix<Tp> &U() const noexcept { return U_; }
+
+  /**
+   * @brief Returns right singular vectors.
+   *
+   * @return Matrix V.
+   */
+
   const Matrix<Tp> &V() const noexcept { return V_; }
+
+  /**
+   * @brief Computes numerical rank.
+   *
+   * A singular value σ is considered nonzero if:
+   *
+   *      σ > eps * max(σ)
+   *
+   * @param eps Relative tolerance.
+   * @return Estimated rank.
+   */
 
   std::size_t rank(Tp eps = Tp(1e-12)) const {
     Tp smax = *std::max_element(d.raw(), d.raw() + k);
@@ -63,6 +158,17 @@ public:
         ++r;
     return r;
   }
+
+  /**
+   * @brief Computes condition number.
+   *
+   * κ(A) = σ_max / σ_min
+   *
+   * Singular values smaller than eps are ignored.
+   *
+   * @param eps Absolute tolerance.
+   * @return Condition number or infinity if singular.
+   */
 
   Tp condition_number(Tp eps = Tp(1e-12)) const {
     Tp smax = Tp(0);
@@ -76,6 +182,20 @@ public:
     }
     return (smin == Tp(0)) ? std::numeric_limits<Tp>::infinity() : smax / smin;
   }
+
+  /**
+   * @brief Computes Moore–Penrose pseudoinverse.
+   *
+   * Uses:
+   *
+   *      A⁺ = V Σ⁺ Uᵀ
+   *
+   * where reciprocals are taken only for sufficiently
+   * large singular values.
+   *
+   * @param eps Relative tolerance.
+   * @return Pseudoinverse matrix (n × m).
+   */
 
   Matrix<Tp> pseudoinverse(Tp eps = Tp(1e-12)) const {
     Matrix<Tp> Splus(n, m, Tp(0));
@@ -92,6 +212,15 @@ public:
 
 private:
   //  Householder Bidiagonalization (
+
+  /**
+   * @brief Reduces matrix A to bidiagonal form.
+   *
+   * Applies alternating left and right Householder
+   * reflectors and accumulates transformations into U and V.
+   *
+   * @param A Input matrix.
+   */
 
   void bidiagonalize(const Matrix<Tp> &A) {
     Matrix<Tp> B = A;
@@ -110,6 +239,19 @@ private:
   }
 
   // Householder Left
+
+  /**
+   * @brief Applies left Householder reflector.
+   *
+   * Eliminates subdiagonal entries in column i.
+   *
+   * Updates:
+   *  - B (working matrix)
+   *  - U (accumulated left singular vectors)
+   *
+   * @param B Working matrix.
+   * @param i Column index.
+   */
 
   void householder_left(Matrix<Tp> &B, std::size_t i) {
     Tp *RESTRICT B_raw = B.raw();
@@ -177,6 +319,19 @@ private:
 
   // Householder Right
 
+  /**
+   * @brief Applies right Householder reflector.
+   *
+   * Eliminates superdiagonal entries in row i.
+   *
+   * Updates:
+   *  - B (working matrix)
+   *  - V (accumulated right singular vectors)
+   *
+   * @param B Working matrix.
+   * @param i Row index.
+   */
+
   void householder_right(Matrix<Tp> &B, std::size_t i) {
     Tp *RESTRICT B_raw = B.raw();
     Tp *RESTRICT V_raw = V_.raw();
@@ -239,6 +394,15 @@ private:
   }
 
   // Golub–Kahan Implicit QR Iteration
+
+  /**
+   * @brief Performs Golub–Kahan implicit QR iteration.
+   *
+   * Repeatedly applies Givens rotations to diagonalize
+   * the bidiagonal matrix until convergence.
+   *
+   * @throws std::runtime_error if max iterations exceeded.
+   */
 
   void iterate() {
     for (std::size_t iter = 0; iter < maxIter; ++iter) {
@@ -305,6 +469,15 @@ private:
     throw std::runtime_error("SVD failed to converge");
   }
 
+  /**
+   * @brief Computes Wilkinson shift.
+   *
+   * Used to accelerate convergence of QR iteration.
+   *
+   * @param end Active submatrix end index.
+   * @return Shift value μ.
+   */
+
   Tp wilkinson_shift(std::size_t end) const {
     const Tp *RESTRICT d_raw = d.raw();
     const Tp *RESTRICT e_raw = e.raw();
@@ -323,6 +496,19 @@ private:
     return (tr - disc) / 2;
   }
 
+  /**
+   * @brief Computes Givens rotation coefficients.
+   *
+   * Finds c and s such that:
+   *
+   *      [ c  s] [x] = [r]
+   *      [-s  c] [y]   [0]
+   *
+   * @param x Input value.
+   * @param y Input value.
+   * @param c Cosine output.
+   * @param s Sine output.
+   */
   void givens(Tp x, Tp y, Tp &c, Tp &s) {
     Tp r = std::hypot(x, y);
     if (r == Tp(0)) {
@@ -335,6 +521,16 @@ private:
   }
 
   // QR Iteration Rotations
+
+  /**
+   * @brief Applies left Givens rotation to U.
+   *
+   * Rotates rows i and i+1 of U.
+   *
+   * @param i Row index.
+   * @param c Cosine.
+   * @param s Sine.
+   */
 
   void apply_left_rotation(std::size_t i, Tp c, Tp s) {
     Tp *RESTRICT U_raw = U_.raw();
@@ -349,6 +545,16 @@ private:
     }
   }
 
+  /**
+   * @brief Applies right Givens rotation to V.
+   *
+   * Rotates rows i and i+1 of V.
+   *
+   * @param i Row index.
+   * @param c Cosine.
+   * @param s Sine.
+   */
+
   void apply_right_rotation(std::size_t i, Tp c, Tp s) {
     Tp *RESTRICT V_raw = V_.raw();
     std::size_t cols = (mode == ComputeMode::Full) ? n : k;
@@ -362,6 +568,12 @@ private:
     }
   }
 
+  /**
+   * @brief Ensures singular values are non-negative.
+   *
+   * Flips corresponding columns of V when needed.
+   */
+
   void enforce_positive() {
     Tp *RESTRICT d_raw = d.raw();
     Tp *RESTRICT V_raw = V_.raw();
@@ -373,6 +585,12 @@ private:
       }
     }
   }
+
+  /**
+   * @brief Sorts singular values in descending order.
+   *
+   * Reorders corresponding columns of U and V.
+   */
 
   void sort_descending() {
     Tp *RESTRICT d_raw = d.raw();

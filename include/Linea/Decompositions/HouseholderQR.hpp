@@ -1,6 +1,30 @@
-// created by : A.N. Prosper
-// date : January 24th 2026
-// time : 20:10
+
+/**
+ * @file HouseholderQR.hpp
+ * @author A.N. Prosper
+ * @date January 24th 2026
+ * @brief QR factorization using Householder reflections.
+ *
+ * Computes:
+ *
+ *      A = Q R
+ *
+ * where:
+ *      - Q is orthogonal (QᵀQ = I)
+ *      - R is upper triangular
+ *
+ * Uses in-place storage of reflectors.
+ *
+ * Time Complexity:
+ *      O(2mn² − 2n³/3)
+ *
+ * Rank Detection:
+ *      Determined via column norm thresholding.
+ *
+ * Numerical Stability:
+ *      Backward stable.
+ *      Preferred over normal equations for least squares.
+ */
 
 #ifndef LINEA_HOUSEHOLDER_QR_HPP
 #define LINEA_HOUSEHOLDER_QR_HPP
@@ -15,8 +39,21 @@
 #include <limits>
 #include <stdexcept>
 
-
 namespace Linea::Decompositions {
+
+/**
+ * @tparam T Floating-point scalar type.
+ *
+ * Stores:
+ *      - QR matrix with reflectors
+ *      - Householder coefficients (betas)
+ *      - Numerical rank
+ *
+ * Supports:
+ *      - Thin and Full decompositions
+ *      - Least squares solving
+ *      - Explicit Q and R extraction
+ */
 
 template <RealType T> class HouseholderQR {
 private:
@@ -34,9 +71,43 @@ public:
     factorize();
   }
 
+  /**
+   * @brief Returns the numerical rank of the matrix.
+   *
+   * The rank is determined during factorization by thresholding
+   * the column 2-norm against:
+   *
+   *      tol = ε · max(m, n)
+   *
+   * where ε is machine precision.
+   *
+   * A column is considered linearly independent if its norm
+   * exceeds this threshold.
+   *
+   * @return Numerical rank of A.
+   *
+   * @note Rank is computed without column pivoting.
+   */
+
   std::size_t rank() const noexcept { return rank_; }
 
   // --- Accessors ---
+
+  /**
+   * @brief Extracts the upper triangular matrix R.
+   *
+   * Constructs R from the upper triangular portion of the
+   * internally stored QR matrix.
+   *
+   * Modes:
+   *      - ComputeMode::Thin  → returns rank × n matrix
+   *      - ComputeMode::Full  → returns m × n matrix
+   *
+   * @param mode Specifies thin or full decomposition.
+   * @return Explicit R matrix.
+   *
+   * @note Entries below the diagonal are zero.
+   */
 
   Matrix<T> R(ComputeMode mode = ComputeMode::Thin) const {
     std::size_t target_rows = (mode == ComputeMode::Full) ? m_ : rank_;
@@ -55,6 +126,24 @@ public:
     return Rmat;
   }
 
+  /**
+   * @brief Forms the explicit orthogonal matrix Q.
+   *
+   * Q is reconstructed from the stored Householder reflectors:
+   *
+   *      Q = H₀ H₁ ... Hₖ₋₁
+   *
+   * Modes:
+   *      - ComputeMode::Thin  → returns m × rank matrix
+   *      - ComputeMode::Full  → returns m × m matrix
+   *
+   * @param mode Specifies thin or full decomposition.
+   * @return Explicit orthogonal matrix Q.
+   *
+   * @note Construction cost: O(mn²).
+   * @note Internally applies reflectors to the identity matrix.
+   */
+
   Matrix<T> Q(ComputeMode mode = ComputeMode::Thin) const {
     std::size_t target_cols = (mode == ComputeMode::Full) ? m_ : rank_;
     Matrix<T> Qmat(m_, target_cols);
@@ -71,6 +160,27 @@ public:
 
   // --- Solvers ---
 
+  /**
+   * @brief Solves the linear system Ax = b for square full-rank matrices.
+   *
+   * Uses QR factorization:
+   *
+   *      A = QR
+   *      Qᵀ b = y
+   *      Rx = y
+   *
+   * @param b Right-hand side vector.
+   * @return Solution vector x.
+   *
+   * @throws std::logic_error
+   *         If the matrix is not square.
+   *
+   * @throws std::runtime_error
+   *         If the matrix is rank-deficient.
+   *
+   * @note Time complexity: O(n²)
+   */
+
   Vector<T> solve(const Vector<T> &b) const {
     if (m_ != n_)
       throw std::logic_error("Matrix not square.");
@@ -78,6 +188,29 @@ public:
       throw std::runtime_error("Matrix is rank-deficient.");
     return solveLeastSquares(b);
   }
+
+  /**
+   * @brief Solves the least squares problem:
+   *
+   *      min ||Ax − b||₂
+   *
+   * using QR factorization.
+   *
+   * Algorithm:
+   *      1. y = Qᵀ b
+   *      2. Solve Rx = y (back substitution on leading rank block)
+   *
+   * Supports rectangular (m ≥ n) matrices.
+   *
+   * @param b Right-hand side vector (size m).
+   * @return Least-squares solution vector x.
+   *
+   * @throws std::invalid_argument
+   *         If dimension mismatch occurs.
+   *
+   * @note Time complexity: O(mn + n²)
+   * @note Preferred over normal equations for numerical stability.
+   */
 
   Vector<T> solveLeastSquares(const Vector<T> &b) const {
     if (b.size() != m_)
@@ -99,6 +232,28 @@ public:
   }
 
 private:
+  /**
+   * @brief Performs in-place Householder QR factorization.
+   *
+   * Overwrites QR_ with:
+   *
+   *      - Upper triangle → R
+   *      - Strict lower triangle → Householder vectors
+   *
+   * Stores scalar reflector coefficients in betas_.
+   *
+   * Each step constructs a reflector:
+   *
+   *      H = I − β v vᵀ
+   *
+   * such that entries below the diagonal are annihilated.
+   *
+   * Rank is updated based on column norm thresholding.
+   *
+   * @note Time complexity: O(2mn² − 2n³/3)
+   * @note No column pivoting is performed.
+   */
+
   void factorize() {
     const std::size_t K = std::min(m_, n_);
     T *RESTRICT QRp = QR_.raw();
@@ -141,6 +296,23 @@ private:
     }
   }
 
+  /**
+   * @brief Applies Qᵀ to a vector in-place.
+   *
+   * Computes:
+   *
+   *      vec ← Qᵀ vec
+   *
+   * without explicitly forming Q.
+   *
+   * Reflectors are applied in forward order.
+   *
+   * @param vec Vector to transform.
+   *
+   * @note Time complexity: O(mn)
+   * @note Used internally for least squares solving.
+   */
+
   void applyQT(Vector<T> &vec) const {
     const std::size_t K = std::min(m_, n_);
     const T *RESTRICT QRp = QR_.raw();
@@ -160,6 +332,23 @@ private:
         vec[i] -= QRp[i * n_ + k] * dot;
     }
   }
+
+  /**
+   * @brief Applies Q to a matrix in-place.
+   *
+   * Computes:
+   *
+   *      mat ← Q mat
+   *
+   * without explicitly forming Q.
+   *
+   * Reflectors are applied in reverse order.
+   *
+   * @param mat Matrix to transform.
+   *
+   * @note Time complexity: O(mn·p) where p = number of columns of mat.
+   * @note Used internally to construct explicit Q.
+   */
 
   void applyQ(Matrix<T> &mat) const {
     const std::size_t K = std::min(m_, n_);
