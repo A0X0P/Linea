@@ -1,6 +1,81 @@
-// created by : A.N. Prosper
-// date : january 19th 2026
-// time : 23:02
+/**
+ * @file Vector.hpp
+ * @author A.N. Prosper
+ * @date December 19th 2025
+ * @brief Generic dense vector container with linear algebra utilities.
+ *
+ * @details
+ * This file defines the class template Linea::Vector<V>, a contiguous,
+ * dynamically-sized dense vector constrained by the NumericType concept.
+ *
+ * The vector supports:
+ * - Size construction (zero or constant initialization)
+ * - Initializer-list construction
+ * - Explicit type-safe casting
+ * - Random vector generation
+ * - Element access with bounds checking
+ * - Dot product
+ * - Norm computations (L1, L2, L∞, Lp)
+ * - Distance and angle operations
+ * - Outer product construction
+ * - Reshaping into Matrix
+ * - Concatenation
+ * - Hadamard product
+ *
+ * Mathematical Representation:
+ *
+ * A vector v ∈ 𝔽ⁿ is defined as:
+ *
+ *      v = [ v₀, v₁, …, vₙ₋₁ ]
+ *
+ * Storage layout:
+ *
+ *      index(i) = i
+ *
+ * so that:
+ *
+ *      v_i ↦ data[i]
+ *
+ * Memory Model:
+ * - Contiguous std::vector<V>
+ * - No padding
+ * - Stable address unless reallocated
+ * - raw() provides direct pointer access
+ *
+ * Type Requirements:
+ * - V must satisfy NumericType
+ * - Certain operations require:
+ *      • RealType<V>   (norms, angle, distance)
+ *
+ * Exception Safety:
+ * - Strong guarantee for constructors
+ * - Bounds-checked element access throws std::invalid_argument
+ * - Dimension mismatches throw std::invalid_argument
+ *
+ * Thread Safety:
+ * - Distinct Vector objects are thread-safe.
+ * - random() uses thread_local RNG.
+ *
+ * Complexity Model:
+ * - Construction: O(n)
+ * - Element access: O(1)
+ * - Dot product: O(n)
+ * - Norm computation: O(n)
+ * - Outer product: O(n·m)
+ *
+ * Design Goals:
+ * - Deterministic performance
+ * - Zero hidden allocations beyond std::vector
+ * - Clear mathematical semantics
+ * - STL interoperability
+ *
+ * @note
+ * This is a dense vector implementation. Sparse optimizations are not included.
+ *
+ * @warning
+ * Numerical stability depends on algorithmic use (e.g., angle computation
+ * may suffer from floating-point precision loss).
+ */
 
 #ifndef LINEA_VECTOR_H
 #define LINEA_VECTOR_H
@@ -19,6 +94,86 @@ namespace Linea {
 
 template <NumericType M> class Matrix;
 
+/**
+ * @class Vector
+ * @brief Dense, contiguous vector over a numeric scalar field.
+ *
+ * @tparam V Scalar type satisfying NumericType
+ *         (IntegralType ∪ RealType).
+ *
+ * @details
+ *
+ * Vector<V> models a finite-dimensional vector:
+ *
+ *      v ∈ 𝔽ⁿ
+ *
+ * where:
+ *
+ *      𝔽 = ℤ  ∪  ℝ
+ *
+ * depending on V.
+ *
+ * ---------------   Mathematical Model    ------------------
+ *
+ * A vector is defined as:
+ *
+ *      v = (v₀, v₁, …, vₙ₋₁)
+ *
+ * Element access obeys:
+ *
+ *      v(i) = v_i
+ *
+ * Storage mapping:
+ *
+ *      v_i ↦ data[i]
+ *
+ * ensuring contiguous memory.
+ *
+ * ---------------    Memory Representation    ------------------
+ *
+ * Internally:
+ *
+ *      std::vector<V> data;
+ *
+ * Properties:
+ * - Contiguous storage
+ * - No hidden allocations beyond std::vector
+ * - Random access iterator support
+ *
+ * ---------------    Dimensional Invariants    ------------------
+ *
+ * For all instances:
+ *
+ *      size() ≥ 0
+ *      data.size() == size()
+ *
+ * ---------------    Algebraic Interpretation    ------------------
+ *
+ * If V ∈ ℝ:
+ *      Vector<V> forms a finite-dimensional real vector space.
+ *
+ * If V ∈ ℤ:
+ *      Vector<V> forms a free ℤ-module.
+ *
+ * Inner product:
+ *
+ *      ⟨v, w⟩ = Σ vᵢ wᵢ
+ *
+ * Norms:
+ *
+ *      ||v||₁   = Σ |vᵢ|
+ *      ||v||₂   = sqrt(Σ vᵢ²)
+ *      ||v||∞   = max |vᵢ|
+ *      ||v||ₚ   = (Σ |vᵢ|ᵖ)^(1/p)
+ *
+ * ---------------   Design Goals    ------------------
+ *
+ * - Deterministic O(n) linear algebra
+ * - Explicit domain control
+ * - No hidden temporaries
+ * - Clear mathematical behavior
+ */
+
 template <NumericType V> class Vector {
 
 private:
@@ -29,19 +184,70 @@ public:
 
   // Constructors
 
-  // size with fill value
+  /**
+   * @brief Constructs vector of given size filled with constant value.
+   *
+   * v_i = value  for all i.
+   *
+   * @param size Number of elements.
+   * @param value Initialization value.
+   *
+   * @complexity O(n)
+   */
+
   Vector(std::size_t size, V value) : data(size, value) {};
 
-  // size-only (zero-initialized)
+  /**
+   * @brief Constructs zero-initialized vector of given size.
+   *
+   * v_i = V{0}
+   *
+   * @param size Number of elements.
+   *
+   * @complexity O(n)
+   */
+
   explicit Vector(std::size_t size) : data(size, V{0}) {};
 
-  // initializer-list construction
+  /**
+   * @brief Constructs vector from initializer list.
+   *
+   * Example:
+   * @code
+   * Vector<double> v{1,2,3};
+   * @endcode
+   *
+   * @complexity O(n)
+   */
+
   Vector(std::initializer_list<V> list) : data(list) {};
 
-  // std::vector copy construction
+  /**
+   * @brief Explicit construction from std::vector.
+   *
+   * @param v Source container.
+   *
+   * @complexity O(n)
+   */
+
   explicit Vector(const std::vector<V> &v) : data(v) {};
 
-  // random initialization
+  /**
+   * @brief Constructs vector with random values in [min_range, max_range].
+   *
+   * Uses:
+   * - uniform_int_distribution for integral types.
+   * - uniform_real_distribution for floating types.
+   *
+   * @param size Number of elements.
+   * @param min_range Lower bound.
+   * @param max_range Upper bound.
+   *
+   * @return Randomly initialized vector.
+   *
+   * @complexity O(n)
+   */
+
   static Vector<V> random(std::size_t size, V min_range, V max_range) {
     auto low = std::min(min_range, max_range);
     auto high = std::max(min_range, max_range);
@@ -66,10 +272,29 @@ public:
     return result;
   }
 
-  // vector3D initialization
+  /**
+   * @brief Constructs vector from Vector3D.
+   *
+   * Copies x, y, z components.
+   *
+   * @complexity O(1)
+   */
+
   Vector(const Vector3D<V> &v);
 
-  // casting
+  /**
+   * @brief Explicit casting constructor.
+   *
+   * Performs element-wise static_cast:
+   *
+   *      v_i^(V) = static_cast<V>(u_i^(U))
+   *
+   * @tparam U Source numeric type.
+   * @param vector Source vector.
+   *
+   * @complexity O(n)
+   */
+
   template <NumericType U>
   explicit Vector(const Vector<U> &vector) : data(vector.size()) {
     for (std::size_t i = 0; i < data.size(); ++i) {
@@ -79,17 +304,48 @@ public:
     }
   }
 
-  // Getters
+  /**
+   * @brief Returns number of elements.
+   *
+   * @return Vector length.
+   */
+
   std::size_t size() const noexcept { return data.size(); };
+
+  /**
+   * @brief Returns const reference to underlying storage.
+   *
+   * @return const std::vector<V>&
+   */
+
   const std::vector<V> &data_ref() const & noexcept { return data; };
 
-  // Element access
+  /**
+   * @brief Bounds-checked element access (mutable).
+   *
+   * @param index Position.
+   *
+   * @return Reference to element.
+   *
+   * @throws std::invalid_argument If index out of range.
+   */
+
   V &operator[](std::size_t index) {
     if (index >= data.size()) {
       throw std::invalid_argument("vector index out of range");
     }
     return data[index];
   };
+
+  /**
+   * @brief Bounds-checked element access (const).
+   *
+   * @param index Position.
+   *
+   * @return Const reference.
+   *
+   * @throws std::invalid_argument If index out of range.
+   */
 
   const V &operator[](std::size_t index) const {
     if (index >= data.size()) {
@@ -98,10 +354,27 @@ public:
     return data[index];
   };
 
+  /**
+   * @brief Returns raw pointer to contiguous storage.
+   *
+   * @return Pointer to first element.
+   */
+
   [[nodiscard]] inline V *raw() noexcept { return data.data(); }
   [[nodiscard]] inline const V *raw() const noexcept { return data.data(); }
 
-  // Comparison operators
+  /**
+   * @brief Equality comparison.
+   *
+   * For integral types:
+   *      exact equality
+   *
+   * For floating types:
+   *      uses floating_point_equality()
+   *
+   * @return True if vectors are element-wise equal.
+   */
+
   bool operator==(const Vector<V> &other) const noexcept {
     if (data.size() != other.size())
       return false;

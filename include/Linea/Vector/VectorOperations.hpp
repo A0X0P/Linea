@@ -1,6 +1,35 @@
-// created by : A.N. Prosper
-// date : january 25th 2026
-// time : 13:56
+
+/**
+ * @file VectorOperations.hpp
+ * @author A.N. Prosper
+ * @date January 25th 2026
+ * @brief Implements arithmetic, geometric, and structural operations
+ *        for the Linea::Vector class.
+ *
+ * This file provides:
+ *
+ * Arithmetic operations:
+ *   - Element-wise addition and subtraction
+ *   - Hadamard (element-wise) product
+ *   - Scalar multiplication
+ *   - Dot product
+ *
+ * Geometric operations:
+ *   - Euclidean distance
+ *   - Angle between vectors
+ *   - Vector norms (L1, L2, L∞, Lp)
+ *   - Outer product
+ *
+ * Structural operations:
+ *   - Reshape into matrix
+ *   - Concatenation (join)
+ *   - Segment extraction
+ *
+ * All size-sensitive operations validate dimensional compatibility
+ * and throw std::invalid_argument or std::out_of_range when violated.
+ *
+ * @note Norms and distance return double for numerical stability.
+ */
 
 #ifndef LINEA_VECTOR_OPERATIONS_H
 #define LINEA_VECTOR_OPERATIONS_H
@@ -9,7 +38,20 @@
 
 namespace Linea {
 
-// Addition (same type)
+/**
+ * @brief Element-wise addition of two vectors of the same type.
+ *
+ * Computes a new vector where each element is the sum of the
+ * corresponding elements of the two vectors.
+ *
+ * @param other Vector to add.
+ * @return A new vector containing element-wise sums.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ *
+ * @note Both vectors must have identical size.
+ */
+
 template <NumericType V>
 Vector<V> Vector<V>::operator+(const Vector<V> &other) const {
   if (data.size() != other.data.size()) {
@@ -26,7 +68,18 @@ Vector<V> Vector<V>::operator+(const Vector<V> &other) const {
   return result;
 }
 
-// Addition (different type)
+/**
+ * @brief Element-wise addition of two vectors of different numeric types.
+ *
+ * The resulting vector element type is deduced using `Numeric<T, V>`.
+ *
+ * @tparam T Numeric type of the other vector.
+ * @param other Vector to add.
+ * @return A new vector containing element-wise sums with promoted type.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V>
 template <NumericType T>
 Vector<Numeric<T, V>> Vector<V>::operator+(const Vector<T> &other) const {
@@ -44,7 +97,18 @@ Vector<Numeric<T, V>> Vector<V>::operator+(const Vector<T> &other) const {
   return result;
 }
 
-// Subtraction (same type)
+/**
+ * @brief Element-wise subtraction of two vectors of the same type.
+ *
+ * Computes a new vector where each element is the difference
+ * between corresponding elements.
+ *
+ * @param other Vector to subtract.
+ * @return A new vector containing element-wise differences.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V>
 Vector<V> Vector<V>::operator-(const Vector<V> &other) const {
   if (data.size() != other.data.size()) {
@@ -61,7 +125,18 @@ Vector<V> Vector<V>::operator-(const Vector<V> &other) const {
   return result;
 }
 
-// Subtraction (different type)
+/**
+ * @brief Element-wise subtraction of two vectors of different numeric types.
+ *
+ * The resulting vector element type is deduced using `Numeric<T, V>`.
+ *
+ * @tparam T Numeric type of the other vector.
+ * @param other Vector to subtract.
+ * @return A new vector containing element-wise differences with promoted type.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V>
 template <NumericType T>
 Vector<Numeric<T, V>> Vector<V>::operator-(const Vector<T> &other) const {
@@ -79,7 +154,18 @@ Vector<Numeric<T, V>> Vector<V>::operator-(const Vector<T> &other) const {
   return result;
 }
 
-// Hadamard product (same type)
+/**
+ * @brief Computes the Hadamard (element-wise) product.
+ *
+ * Each element of the resulting vector is the product of the
+ * corresponding elements of the two vectors.
+ *
+ * @param other Vector to multiply element-wise.
+ * @return A new vector containing element-wise products.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V>
 Vector<V> Vector<V>::hadamard(const Vector<V> &other) const {
   if (data.size() != other.data.size()) {
@@ -97,7 +183,19 @@ Vector<V> Vector<V>::hadamard(const Vector<V> &other) const {
   return result;
 }
 
-// Hadamard product (different type)
+/**
+ * @brief Computes the Hadamard (element-wise) product for vectors
+ *        of different numeric types.
+ *
+ * The resulting vector element type is deduced using `Numeric<T, V>`.
+ *
+ * @tparam T Numeric type of the other vector.
+ * @param other Vector to multiply element-wise.
+ * @return A new vector containing element-wise products with promoted type.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V>
 template <NumericType T>
 Vector<Numeric<T, V>> Vector<V>::hadamard(const Vector<T> &other) const {
@@ -116,7 +214,16 @@ Vector<Numeric<T, V>> Vector<V>::hadamard(const Vector<T> &other) const {
   return result;
 }
 
-// Scalar multiplication
+/**
+ * @brief Multiplies each element of the vector by a scalar.
+ *
+ * @tparam S Scalar numeric type.
+ * @param scalar Value to multiply each element by.
+ * @return A new vector containing scaled elements.
+ *
+ * @note Resulting element type is deduced using `Numeric<V, S>`.
+ */
+
 template <NumericType V>
 template <NumericType S>
 Vector<Numeric<V, S>> Vector<V>::operator*(S scalar) const {
@@ -130,13 +237,34 @@ Vector<Numeric<V, S>> Vector<V>::operator*(S scalar) const {
   return result;
 }
 
-// Left scalar multiplication
+/**
+ * @brief Multiplies a scalar by a vector (left scalar multiplication).
+ *
+ * Equivalent to `vector * scalar`.
+ *
+ * @tparam S Scalar numeric type.
+ * @tparam V Vector numeric type.
+ * @param scalar Scalar value.
+ * @param vector Vector to scale.
+ * @return A new scaled vector.
+ */
+
 template <NumericType S, NumericType V>
 Vector<Numeric<V, S>> operator*(S scalar, const Vector<V> &vector) {
   return vector * scalar;
 }
 
-// Dot product
+/**
+ * @brief Computes the dot (inner) product of two vectors.
+ *
+ * Calculates the sum of element-wise products.
+ *
+ * @param other Vector to compute dot product with.
+ * @return The scalar dot product.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType V> V Vector<V>::dot(const Vector<V> &other) const {
   if (data.size() != other.data.size()) {
     throw std::invalid_argument("dot product requires same size");
@@ -153,7 +281,19 @@ template <NumericType V> V Vector<V>::dot(const Vector<V> &other) const {
   return sum;
 }
 
-// Distance
+/**
+ * @brief Computes the Euclidean distance between two vectors.
+ *
+ * Defined as:
+ *     sqrt( Σ (a_i - b_i)^2 )
+ *
+ * @param a First vector.
+ * @param b Second vector.
+ * @return Euclidean distance as double.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType T>
 double distance(const Vector<T> &a, const Vector<T> &b) {
   if (a.size() != b.size()) {
@@ -170,7 +310,21 @@ double distance(const Vector<T> &a, const Vector<T> &b) {
   return std::sqrt(sum);
 };
 
-// Angle
+/**
+ * @brief Computes the angle between two vectors in radians.
+ *
+ * Uses the relation:
+ *     acos( dot(a,b) / (||a|| * ||b||) )
+ *
+ * The cosine value is clamped to [-1, 1] to improve numerical stability.
+ *
+ * @param a First vector.
+ * @param b Second vector.
+ * @return Angle in radians.
+ *
+ * @throws std::invalid_argument If vector sizes differ.
+ */
+
 template <NumericType T> double angle(const Vector<T> &a, const Vector<T> &b) {
   if (a.size() != b.size()) {
     throw std::invalid_argument("angle requires same size vectors");
@@ -181,7 +335,20 @@ template <NumericType T> double angle(const Vector<T> &a, const Vector<T> &b) {
   return std::acos(cosθ);
 };
 
-// Norm
+/**
+ * @brief Computes a vector norm based on the specified type.
+ *
+ * Supported norms:
+ * - VectorNorm::One      → L1 norm
+ * - VectorNorm::Two      → L2 norm
+ * - VectorNorm::Infinity → Maximum norm
+ * - VectorNorm::P        → General Lp norm
+ *
+ * @param type Norm type.
+ * @param p Parameter for Lp norm (ignored otherwise).
+ * @return Computed norm as double.
+ */
+
 template <NumericType V>
 double Vector<V>::norm(VectorNorm type, double p) const {
   switch (type) {
@@ -198,7 +365,15 @@ double Vector<V>::norm(VectorNorm type, double p) const {
   }
 }
 
-//  L1 norm
+/**
+ * @brief Computes the L1 norm (Manhattan norm).
+ *
+ * Defined as:
+ *     Σ |x_i|
+ *
+ * @return L1 norm as double.
+ */
+
 template <NumericType V> double Vector<V>::norm_L1() const {
   return std::accumulate(data.begin(), data.end(), V{0},
                          [](double sum, V value) {
@@ -206,7 +381,15 @@ template <NumericType V> double Vector<V>::norm_L1() const {
                          });
 }
 
-//  L2 norm
+/**
+ * @brief Computes the L2 norm (Euclidean norm).
+ *
+ * Defined as:
+ *     sqrt( Σ x_i^2 )
+ *
+ * @return L2 norm as double.
+ */
+
 template <NumericType V> double Vector<V>::norm_L2() const {
   return std::sqrt(
       std::accumulate(data.begin(), data.end(), 0.0, [](double sum, V value) {
@@ -215,7 +398,17 @@ template <NumericType V> double Vector<V>::norm_L2() const {
       }));
 }
 
-// Infinity norm
+/**
+ * @brief Computes the infinity norm (maximum absolute value).
+ *
+ * Defined as:
+ *     max |x_i|
+ *
+ * @return Maximum absolute element.
+ *
+ * @throws std::domain_error If the vector is empty.
+ */
+
 template <NumericType V> double Vector<V>::norm_Lmax() const {
   if (data.empty())
     throw std::domain_error("norm_Lmax: empty vector");
@@ -225,7 +418,18 @@ template <NumericType V> double Vector<V>::norm_Lmax() const {
   return max_elem;
 }
 
-//  Lp norm
+/**
+ * @brief Computes the Lp norm.
+ *
+ * Defined as:
+ *     ( Σ |x_i|^p )^(1/p)
+ *
+ * @param p Norm order (must be >= 1).
+ * @return Lp norm as double.
+ *
+ * @throws std::invalid_argument If p < 1.
+ */
+
 template <NumericType V> double Vector<V>::norm_Lp(double p) const {
   if (p < 1.0)
     throw std::invalid_argument("Lp norm requires p >= 1");
@@ -236,7 +440,16 @@ template <NumericType V> double Vector<V>::norm_Lp(double p) const {
   return std::pow(sum, 1.0 / p);
 }
 
-// Outer product
+/**
+ * @brief Computes the outer product of two vectors.
+ *
+ * Produces a matrix where:
+ *     result(i,j) = this[i] * other[j]
+ *
+ * @param other Vector to form outer product with.
+ * @return A matrix of size (this->size() × other.size()).
+ */
+
 template <NumericType V>
 Matrix<V> Vector<V>::outer(const Vector<V> &other) const {
   const std::size_t rows = data.size();
@@ -260,7 +473,18 @@ Matrix<V> Vector<V>::outer(const Vector<V> &other) const {
   return result;
 }
 
-// Reshape
+/**
+ * @brief Reshapes the vector into a matrix.
+ *
+ * Elements are copied in row-major order.
+ *
+ * @param rows Number of rows.
+ * @param columns Number of columns.
+ * @return Matrix with specified dimensions.
+ *
+ * @throws std::invalid_argument If rows * columns != vector size.
+ */
+
 template <NumericType V>
 Matrix<V> Vector<V>::reshape(std::size_t rows, std::size_t columns) const {
   if (rows * columns != data.size()) {
@@ -272,7 +496,15 @@ Matrix<V> Vector<V>::reshape(std::size_t rows, std::size_t columns) const {
   return result;
 }
 
-// Concatenation (same type)
+/**
+ * @brief Concatenates two vectors of the same type.
+ *
+ * Appends the elements of `other` to the end of this vector.
+ *
+ * @param other Vector to append.
+ * @return A new vector containing both sequences.
+ */
+
 template <NumericType V>
 Vector<V> Vector<V>::join(const Vector<V> &other) const {
   const std::size_t this_size = data.size();
@@ -286,7 +518,16 @@ Vector<V> Vector<V>::join(const Vector<V> &other) const {
   return result;
 }
 
-// Concatenation (different type)
+/**
+ * @brief Concatenates two vectors of different numeric types.
+ *
+ * Resulting element type is deduced using `Numeric<T, V>`.
+ *
+ * @tparam T Numeric type of the other vector.
+ * @param other Vector to append.
+ * @return A new concatenated vector with promoted type.
+ */
+
 template <NumericType V>
 template <NumericType T>
 Vector<Numeric<T, V>> Vector<V>::join(const Vector<T> &other) const {
@@ -307,7 +548,16 @@ Vector<Numeric<T, V>> Vector<V>::join(const Vector<T> &other) const {
   return result;
 }
 
-// Extraction
+/**
+ * @brief Extracts a contiguous segment of the vector.
+ *
+ * @param start Starting index.
+ * @param length Number of elements to extract.
+ * @return A new vector containing the specified segment.
+ *
+ * @throws std::out_of_range If the requested range exceeds vector bounds.
+ */
+
 template <NumericType V>
 Vector<V> Vector<V>::segment(std::size_t start, std::size_t length) const {
   if (start + length > size()) {

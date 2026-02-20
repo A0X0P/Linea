@@ -1,6 +1,20 @@
-// created by : A.N. Prosper
-// date : january 25th 2026
-// time : 00:01
+
+/**
+ * @file Vector3D.hpp
+ * @author A.N. Prosper
+ * @date January 25th 2026
+ * @brief Fixed-size 3D vector with geometric operations.
+ *
+ * Provides:
+ *      - Cross product
+ *      - Scalar triple product
+ *      - Vector triple product
+ *
+ * Designed for:
+ *      - Computational geometry
+ *      - Physics
+ *      - Graphics
+ */
 
 #ifndef LINEA_VECTOR3D_H
 #define LINEA_VECTOR3D_H
@@ -11,6 +25,19 @@
 namespace Linea {
 
 template <NumericType V> class Vector;
+
+/**
+ * @class Vector3D
+ *
+ * Represents a 3D vector:
+ *
+ *      v = (x, y, z)
+ *
+ * Storage:
+ *      std::array<T,3>
+ *
+ * All operations are constexpr where possible.
+ */
 
 template <NumericType T> class Vector3D {
 
@@ -35,15 +62,36 @@ public:
     return data[i];
   }
 
-  // Cross Product
+  /**
+   * @brief Cross product.
+   *
+   * For vectors a and b:
+   *
+   *      a × b =
+   *      (a₂b₃ − a₃b₂,
+   *       a₃b₁ − a₁b₃,
+   *       a₁b₂ − a₂b₁)
+   *
+   * Result orthogonal to both inputs.
+   */
+
   constexpr Vector3D<T> cross(const Vector3D<T> &other) const {
     return Vector3D<T>{data[1] * other[2] - data[2] * other[1],
                        data[2] * other[0] - data[0] * other[2],
                        data[0] * other[1] - data[1] * other[0]};
   }
 
-  // Scalar Triple Product
-  // (a · (b × c))
+  /**
+   * @brief Scalar triple product.
+   *
+   * Computes:
+   *
+   *      a · (b × c)
+   *
+   * Geometric meaning:
+   *      Signed volume of parallelepiped.
+   */
+
   constexpr T scalar_triple_product(const Vector3D &b,
                                     const Vector3D &c) const {
     const Vector3D result = b.cross(c);
@@ -58,7 +106,7 @@ public:
   }
 
   // Raw Access
-  constexpr const std::array<T, 3> &getdata() const noexcept { return data; }
+  constexpr const std::array<T, 3> &data_ref() const noexcept { return data; }
 };
 
 } // namespace Linea
